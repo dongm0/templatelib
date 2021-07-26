@@ -2,6 +2,7 @@
 #define HEXMODU_H
 
 #include "global_datatype.h"
+#include "modusurface.hpp"
 #include <array>
 #include <vector>
 
@@ -22,6 +23,7 @@ public:
       : m_nbh_v(rhs.m_nbh_v), m_nbh_c(rhs.m_nbh_c), m_size(rhs.m_size) {}
 
   void Regular();
+  ModuSurface Surface();
 };
 
 #endif
