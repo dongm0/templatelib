@@ -2,11 +2,33 @@
 #define HEXMODU_H
 
 #include "global_datatype.h"
-#include "modusurface.hpp"
 #include <array>
 #include <vector>
 
 using namespace std;
+
+enum class SFCase { F1, F2, F3_1, F3_2, F4, F5 };
+
+class HexModu;
+
+class ModuSurface {
+  friend class HexModu;
+
+private:
+  vector<Byte> m_nbh_f;
+  vector<Byte> m_nbh_v;
+
+  // Hex2Surface
+  vector<Byte> m_mapping_f;
+
+  // Hex2Surface
+  vector<Byte> m_mapping_v;
+  size_t m_size;
+  ModuSurface();
+
+public:
+  void Regular();
+};
 
 class HexModu {
 private:
@@ -24,6 +46,7 @@ public:
 
   void Regular();
   ModuSurface Surface();
+  vector<pair<SFCase, vector<Byte>>> EnumerateAllSFcase();
 };
 
 #endif
