@@ -3,6 +3,8 @@
 #include <cassert>
 #include <map>
 #include <queue>
+#include <set>
+#include <unordered_set>
 
 namespace {
 using namespace std;
@@ -15,6 +17,16 @@ It FindElementInLine(It begin, It end, It::value_type tar) {
     }
   }
   return end;
+}
+
+template <typename Container, size_t size_n>
+array<Container::value_type, size_n> GetPartInLine(const Container &line,
+                                                   size_t index) {
+  array<Container::valur_type, size_n> res;
+  for (int i = 0; i < size_n; ++i) {
+    res[i] = line.at(index * size_n + i);
+  }
+  return res;
 }
 
 enum class FaceDir {
@@ -36,6 +48,25 @@ FaceDir adj_face[24] = {FaceDir::YF, FaceDir::ZF, FaceDir::YB, FaceDir::ZB,
                         FaceDir::XF, FaceDir::ZF, FaceDir::XB, FaceDir::ZB,
                         FaceDir::XF, FaceDir::YF, FaceDir::XB, FaceDir::YB,
                         FaceDir::XF, FaceDir::YB, FaceDir::XB, FaceDir::YF};
+
+array<Byte, 4> FaceVertices(array<Byte, 8> cell, FaceDir f) {
+  if (f == FaceDir::XF) {
+    return {cell[2], cell[6], cell[5], cell[1]};
+  } else if (f == FaceDir::XB) {
+    return {cell[7], cell[3], cell[0], cell[4]};
+  } else if (f == FaceDir::YF) {
+    return {cell[6], cell[2], cell[3], cell[7]};
+  } else if (f == FaceDir::YB) {
+    return {cell[1], cell[5], cell[4], cell[0]};
+  } else if (f == FaceDir::ZF) {
+    return {cell[5], cell[6], cell[7], cell[4]};
+  } else if (f == FaceDir::ZB) {
+    return {cell[2], cell[1], cell[0], cell[3]};
+  } else {
+    // static_assert(false);
+    return {-1, -1, -1, -1};
+  }
+}
 
 pair<array<Byte, 8>, array<Byte, 6>>
 ZrollCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
@@ -187,25 +218,6 @@ array<FaceDir, 4> AdjFace(FaceDir f) {
                         adj_face[_f * 4 + 2], adj_face[_f * 4 + 3]};
 }
 
-array<Byte, 4> FaceVertices(array<Byte, 8> cell, FaceDir f) {
-  if (f == FaceDir::XF) {
-    return {cell[1], cell[2], cell[5], cell[6]};
-  } else if (f == FaceDir::XB) {
-    return {cell[0], cell[3], cell[4], cell[7]};
-  } else if (f == FaceDir::YF) {
-    return {cell[2], cell[3], cell[6], cell[7]};
-  } else if (f == FaceDir::YB) {
-    return {cell[0], cell[1], cell[4], cell[5]};
-  } else if (f == FaceDir::ZF) {
-    return {cell[4], cell[5], cell[6], cell[7]};
-  } else if (f == FaceDir::ZB) {
-    return {cell[0], cell[1], cell[2], cell[3]};
-  } else {
-    // static_assert(false);
-    return {-1, -1, -1, -1};
-  }
-}
-
 template <size_t N>
 pair<bool, array<Byte, N>> IntersectEdge(array<Byte, 4> f1, array<Byte, 4> f2) {
   array<Byte, N> res;
@@ -244,32 +256,37 @@ FaceDir NbhCPosDir(Byte c1, array<Byte, 6> c1_c, array<Byte, 8> c1_v, Byte c2,
 }
 
 bool ReWriteSurface(Byte st, Byte npos, vector<Byte> &cur_nbh_f,
-                    vector<Byte> &mapping, const vector<Byte> &m_nbh_f,
-                    const vector<Byte> &best_nbh_f) {
+                    vector<Byte> &cur_nbh_v, vector<Byte> &mapping_f,
+                    vector<Byte> &mapping_v, const vector<Byte> &m_nbh_f,
+                    const vector<Byte> &m_nbh_v, const vector<Byte> &best_nbh_f,
+                    const vector<Byte> &best_nbh_v) {
   cur_nbh_f.clear();
   cur_nbh_f.reserve(m_nbh_f.size());
+  cur_nbh_v.clear();
+  cur_nbh_v.reserve(m_nbh_v.size());
   queue<pair<Byte, Byte>> bfsqueue;
-  mapping.assign(m_nbh_f.size() / 4, -1);
   bfsqueue.push({st, npos});
-  int fnum = 0;
-  mapping[st] = fnum;
+  int fnum = 0, vnum = 0;
+  mapping_f[st] = fnum;
   while (!bfsqueue.empty()) {
     auto [cur_f, cur_nf_pos] = bfsqueue.front();
     bfsqueue.pop();
     for (int i = 0; i < 4; ++i) {
       auto _next_f = m_nbh_f[cur_f * 4 + (cur_nf_pos + i) % 4];
-      if (mapping[_next_f] == -1) {
-        mapping[_next_f] = fnum++;
-        int n2opos = -1;
-        for (int j = 0; j < 4; ++j) {
-          if (m_nbh_f[_next_f * 4 + j] == cur_f) {
-            n2opos = j;
-            break;
-          }
-        }
+      auto _nbh_v = m_nbh_v[cur_f * 4 + (cur_nf_pos + i) % 4];
+      if (mapping_f[_next_f] == -1) {
+        mapping_f[_next_f] = fnum++;
+        int n2opos =
+            FindElementInLine(m_nbh_f.begin() + _next_f * 4,
+                              m_nbh_f.begin() + _next_f * 4 + 4, cur_f) -
+            m_nbh_f.begin() + _next_f * 4;
         bfsqueue.push({_next_f, n2opos});
       }
-      cur_nbh_f.push_back(mapping[_next_f]);
+      if (mapping_v[_nbh_v] == -1) {
+        mapping_v[_nbh_v] = vnum++;
+      }
+      cur_nbh_f.push_back(mapping_f[_next_f]);
+      cur_nbh_v.push_back(mapping_v[_nbh_v]);
     }
     if (cur_nbh_f >= best_nbh_f) {
       return false;
@@ -344,100 +361,47 @@ bool ReWriteModu(Byte st, FaceDir xf_dir, FaceDir yf_dir,
 
   return true;
 }
-
-void ExtractSurfaceBFS(Byte cur_c, FaceDir cur_cf_dir, FaceDir st_nbhf_dir,
-                       const vector<Byte> &m_nbh_c, const vector<Byte> &m_nbh_v,
-                       vector<Byte> &mapping_f_m2s, vector<Byte> &surface_f) {
-  int vnum = 0;
-  queue<tuple<Byte, FaceDir, FaceDir>> bfsqueue;
-  auto getNextdirs = [&](Byte cur_c, FaceDir cur_cf_dir, FaceDir st_nbhf_dir) {
-    auto dirs = AdjFace(cur_cf_dir);
-    array<FaceDir, 4> res;
-    for (int i = 0; i < 4; ++i) {
-      if (dirs[i] == st_nbhf_dir) {
-        for (int ii = 0; ii < 4; ++ii) {
-          res[ii] = dirs[(i + ii) % 4];
-        }
-        break;
-      }
-    }
-    return res;
-  };
-  auto getAdjSurface = [&](Byte cur_c, FaceDir cur_cf_dir,
-                           FaceDir next_nbh_dir) {
-    auto _cur_c = cur_c;
-    auto _cur_cf_dir = cur_cf_dir, _next_nbh_dir = next_nbh_dir;
-    auto next_c = m_nbh_c[cur_c * 6 + static_cast<unsigned int>(next_nbh_dir)];
-    while (next_c != -1) {
-      /*loop until meet surface*/
-      array<Byte, 8> c1_nbhv = {
-          m_nbh_c[_cur_c * 8 + 0], m_nbh_c[_cur_c * 8 + 1],
-          m_nbh_c[_cur_c * 8 + 2], m_nbh_c[_cur_c * 8 + 3],
-          m_nbh_c[_cur_c * 8 + 4], m_nbh_c[_cur_c * 8 + 5],
-          m_nbh_c[_cur_c * 8 + 6], m_nbh_c[_cur_c * 8 + 7]};
-      array<Byte, 6> c1_nbhc = {
-          m_nbh_v[_cur_c * 6 + 0], m_nbh_v[_cur_c * 6 + 1],
-          m_nbh_v[_cur_c * 6 + 2], m_nbh_v[_cur_c * 6 + 3],
-          m_nbh_v[_cur_c * 6 + 4], m_nbh_v[_cur_c * 6 + 5]};
-      array<Byte, 8> c2_nbhv = {
-          m_nbh_c[next_c * 8 + 0], m_nbh_c[next_c * 8 + 1],
-          m_nbh_c[next_c * 8 + 2], m_nbh_c[next_c * 8 + 3],
-          m_nbh_c[next_c * 8 + 4], m_nbh_c[next_c * 8 + 5],
-          m_nbh_c[next_c * 8 + 6], m_nbh_c[next_c * 8 + 7]};
-      array<Byte, 6> c2_nbhc = {
-          m_nbh_v[next_c * 6 + 0], m_nbh_v[next_c * 6 + 1],
-          m_nbh_v[next_c * 6 + 2], m_nbh_v[next_c * 6 + 3],
-          m_nbh_v[next_c * 6 + 4], m_nbh_v[next_c * 6 + 5]};
-      _next_nbh_dir = NbhCPosDir(_cur_c, c1_nbhc, c1_nbhv, next_c, c2_nbhc,
-                                 c2_nbhv, _cur_cf_dir);
-      _cur_cf_dir = NbhCDir(c2_nbhc, _cur_c);
-      _cur_c = next_c;
-      next_c = m_nbh_c[_cur_c * 6 + static_cast<unsigned int>(next_nbh_dir)];
-    }
-    return make_tuple(_cur_c, _cur_cf_dir, _next_nbh_dir);
-  };
-  bfsqueue.push({cur_c, cur_cf_dir, st_nbhf_dir});
-  mapping_f_m2s[cur_c * 6 + static_cast<unsigned int>(cur_cf_dir)] = vnum++;
-  while (!bfsqueue.empty()) {
-    auto [_cur_c, _cur_cf_dir, _st_nbhf_dir] = bfsqueue.front();
-    bfsqueue.pop();
-    auto _d = getNextdirs(cur_c, cur_cf_dir, st_nbhf_dir);
-    for (int i = 0; i < 4; ++i) {
-      auto [_next_c, _next_cf_dir, _next_st_nbhf_dir] =
-          getAdjSurface(cur_c, cur_cf_dir, _d[i]);
-      if (mapping_f_m2s[_next_c * 6 +
-                        static_cast<unsigned int>(_next_cf_dir)] == -1) {
-        mapping_f_m2s[_next_c * 6 + static_cast<unsigned int>(_next_cf_dir)] =
-            vnum++;
-        bfsqueue.push({_next_c, _next_cf_dir, _next_st_nbhf_dir});
-      }
-      surface_f.push_back(
-          mapping_f_m2s[_next_c * 6 + static_cast<unsigned int>(_next_cf_dir)]);
-    }
-  }
-}
 }; // namespace
 
 void ModuSurface::Regular() {
   vector<Byte> cur_nbh_f(m_nbh_f);
+  vector<Byte> cur_nbh_v(m_nbh_v);
   vector<Byte> best_nbh_f(m_nbh_f);
-  vector<Byte> cur_mapping(m_size);
-  vector<Byte> best_mapping(m_size);
-  for (int i = 0; i < m_size; ++i) {
-    best_mapping[i] = i;
+  vector<Byte> best_nbh_v(m_nbh_v);
+  vector<Byte> cur_mapping_f(m_size_f);
+  vector<Byte> cur_mapping_v(m_size_v);
+  vector<Byte> best_mapping_f(m_size_f);
+  vector<Byte> best_mapping_v(m_size_v);
+  for (int i = 0; i < m_size_f; ++i) {
+    best_mapping_f[i] = i;
   }
-  for (size_t i = 0; i < m_size; ++i) {
+  for (int i = 0; i < m_size_v; ++i) {
+    best_mapping_v[i] = i;
+  }
+  for (size_t i = 0; i < m_size_f; ++i) {
     for (size_t pos = 0; pos < 4; ++pos) {
-      if (ReWriteSurface(i, pos, cur_nbh_f, cur_mapping, m_nbh_f, best_nbh_f)) {
+      cur_mapping_f.assign(m_size_f, -1);
+      cur_mapping_v.assign(m_size_v, -1);
+      if (ReWriteSurface(i, pos, cur_nbh_f, cur_nbh_v, cur_mapping_f,
+                         cur_mapping_v, m_nbh_f, m_nbh_v, best_nbh_f,
+                         best_nbh_v)) {
         best_nbh_f.swap(cur_nbh_f);
-        best_mapping.swap(cur_mapping);
+        best_nbh_v.swap(cur_nbh_v);
+        best_mapping_f.swap(cur_mapping_f);
+        best_mapping_v.swap(cur_mapping_v);
       }
     }
   }
   m_nbh_f.swap(best_nbh_f);
-  for (size_t i = 0; i < m_mapping.size(); ++i) {
-    if (m_mapping[i] != -1) {
-      m_mapping[i] = best_mapping[m_mapping[i]];
+  m_nbh_v.swap(best_nbh_v);
+  for (size_t i = 0; i < m_mapping_f.size(); ++i) {
+    if (m_mapping_f[i] != -1) {
+      m_mapping_f[i] = best_mapping_f[m_mapping_f[i]];
+    }
+  }
+  for (size_t i = 0; i < m_mapping_v.size(); ++i) {
+    if (m_mapping_v[i] != -1) {
+      m_mapping_v[i] = best_mapping_v[m_mapping_v[i]];
     }
   }
   return;
@@ -485,6 +449,27 @@ ModuSurface HexModu::Surface() {
     return {-1, -1, -1};
   }();
 
+  auto getAdjSurface = [&](Byte cur_c, Byte cur_cf_dir, Byte next_nbh_dir) {
+    auto _cur_c = cur_c;
+    auto _cur_cf_dir = FaceDir(cur_cf_dir),
+         _next_nbh_dir = FaceDir(next_nbh_dir);
+    auto next_c = m_nbh_c[cur_c * 6 + static_cast<unsigned int>(next_nbh_dir)];
+    while (next_c != -1) {
+      /*loop until meet surface*/
+      auto c1_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, _cur_c);
+      auto c1_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, _cur_c);
+      auto c2_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, next_c);
+      auto c2_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, next_c);
+      _next_nbh_dir = NbhCPosDir(_cur_c, c1_nbhc, c1_nbhv, next_c, c2_nbhc,
+                                 c2_nbhv, _cur_cf_dir);
+      _cur_cf_dir = NbhCDir(c2_nbhc, _cur_c);
+      _cur_c = next_c;
+      next_c = m_nbh_c[_cur_c * 6 + static_cast<unsigned int>(next_nbh_dir)];
+    }
+    return make_tuple(_cur_c, static_cast<Byte>(_cur_cf_dir),
+                      static_cast<Byte>(_next_nbh_dir));
+  };
+
   // bfs
   int fnum = 0, vnum = 0;
   queue<tuple<Byte, Byte, Byte>> bfsqueue;
@@ -493,58 +478,214 @@ ModuSurface HexModu::Surface() {
     auto [cur_c, cur_sf_dir, cur_next_dir] = bfsqueue.front();
     bfsqueue.pop();
     auto dirs = AdjFace(FaceDir(cur_sf_dir));
+    auto _tmp = GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, cur_c);
+    auto face_vertices = FaceVertices(_tmp, FaceDir(cur_sf_dir));
     auto _pos =
         FindElementInLine(dirs.begin(), dirs.end(), FaceDir(cur_next_dir)) -
         dirs.begin();
     for (int i = 0; i < 4; ++i) {
-      auto [next_c, next_sf_dir, next_next_dir] =
-          getAdjSurface(cur_c, cur_sf_dir, dirs[(_pos + i) % 4]);
+      auto [next_c, next_sf_dir, next_next_dir] = getAdjSurface(
+          cur_c, cur_sf_dir, static_cast<Byte>(dirs[(_pos + i) % 4]));
       if (mapping_f_h2s[next_c * 6 + next_sf_dir] == -1) {
         mapping_f_h2s[next_c * 6 + next_sf_dir] = fnum++;
         bfsqueue.push({next_c, next_sf_dir, next_next_dir});
       }
+      if (mapping_v_h2s[face_vertices[(_pos + i) % 4]] == -1) {
+        mapping_v_h2s[face_vertices[(_pos + i) % 4]] = vnum++;
+      }
       surface_f.push_back(mapping_f_h2s[next_c * 6 + next_sf_dir]);
+      surface_v.push_back(mapping_v_h2s[face_vertices[(_pos + i) % 4]]);
     }
   }
 
   ModuSurface res;
   res.m_nbh_f.swap(surface_f);
-  res.m_mapping.swap(mapping_f_m2s);
-  res.m_size = res.m_nbh_f.size() / 4;
+  res.m_nbh_v.swap(surface_v);
+  res.m_mapping_f.swap(mapping_f_h2s);
+  res.m_mapping_v.swap(mapping_v_h2s);
+  res.m_size_f = res.m_nbh_f.size() / 4;
+  res.m_size_v = (*max_element(res.m_nbh_v.begin(), res.m_nbh_v.end())) + 1;
   res.Regular();
   return res;
 }
-/*
+
 vector<pair<SFCase, vector<Byte>>> HexModu::EnumerateAllSFcase() {
   ModuSurface sf = Surface();
   map<vector<Byte>, pair<SFCase, vector<Byte>>> recording;
+  unordered_set<pair<Byte, Byte>> diagonals;
+  // calculate all diagonals
   auto SFCaseAt = [&](Byte c, Byte pos_in_c) {
     // All surface case at surface face m_nbh_c[c*6+pos_in_c],
     // m_nbh_c[c*6+pos_in_c] is center
 
     // inquire whether 4 corners connected
-    Byte sf_center = sf.m_mapping[c * 6 + pos_in_c];
-    array<Byte, 4> nbh_i = {0, 1, 2, 3};
-    for_each(nbh_i.begin(), nbh_i.end(), [&](decltype(nbh_i)::value_type &i) {
-      i = sf.m_nbh_f[sf_center * 4 + i];
-    });
+    Byte sf_center = sf.m_mapping_f[c * 6 + pos_in_c];
+    array<Byte, 4> local_nbh_f = {0, 1, 2, 3};
+    for_each(local_nbh_f.begin(), local_nbh_f.end(),
+             [&](decltype(local_nbh_f)::value_type &i) {
+               i = sf.m_nbh_f[sf_center * 4 + i];
+             });
     array<bool, 4> corn_conn = {true, true, true, true};
     for (int i = 0; i < 4; ++i) {
-      int pos =
-          FindElementInLine(sf.m_nbh_f.begin() + nbh_i[i] * 4,
-                            sf.m_nbh_f.begin() + nbh_i[i] * 4 + 4, sf_center) -
-          sf.m_nbh_f.begin() + nbh_i[i] * 4;
-      if (sf.m_nbh_f[nbh_i[i] * 4 + (pos + 3) % 4] != nbh_i[(i + 1) % 4]) {
+      int pos = FindElementInLine(sf.m_nbh_f.begin() + local_nbh_f[i] * 4,
+                                  sf.m_nbh_f.begin() + local_nbh_f[i] * 4 + 4,
+                                  sf_center) -
+                sf.m_nbh_f.begin() + local_nbh_f[i] * 4;
+      if (sf.m_nbh_f[local_nbh_f[i] * 4 + (pos + 3) % 4] !=
+          local_nbh_f[(i + 1) % 4]) {
         corn_conn[i] = false;
       }
     }
 
+    // for convenience
+    auto _findpos = [&](Byte arg1, Byte arg2) {
+      return FindElementInLine(sf.m_nbh_f.begin() + arg1 * 4,
+                               sf.m_nbh_f.begin() + arg1 * 4 + 4, arg2) -
+             sf.m_nbh_f.begin() + arg1 * 4;
+    };
+    auto _findvertex = [&](Byte f, Byte anchor, Byte pos) {
+      return sf.m_nbh_f[f * 4 + (anchor + pos) % 4];
+    };
+    auto _diagpair = [&](Byte p1, Byte p2) {
+      return make_pair(min(p1, p2), max(p1, p2));
+    };
+
     vector<pair<SFCase, vector<Byte>>> res;
+    // logic here is very confusing,
+    // TODO:: explain logic in a markdown file
+    auto checkSFCase = [&](int iter_time, SFCase sfcase,
+                           const vector<Byte> &corn,
+                           const vector<bool> &corn_val, vector<Byte> faces,
+                           const vector<vector<Byte>> &diag_tests) {
+      // add avaliable SurFace Case at sf_center to "res"
+      vector<Byte> local_nbh_f_copy = {sf_center};
+      local_nbh_f_copy.insert(local_nbh_f_copy.end(), local_nbh_f.begin(),
+                              local_nbh_f.end());
+
+      for (int i = 0; i < iter_time; ++i) {
+        bool pass = true;
+        for (int j = 0; j < corn_val.size(); ++j) {
+          if (corn_conn[(i + corn[j]) % 4] == corn_val[j]) {
+            pass = false;
+            break;
+          }
+        }
+        if (!pass) {
+          continue;
+        }
+        vector<Byte> pos;
+        pos.push_back(_findpos(sf_center, local_nbh_f[(i + faces[j]) % 4]));
+        for (int j = 0; j < faces.size(); ++j) {
+          pos.push_back(_findpos(local_nbh_f[(i + faces[j]) % 4], sf_center));
+        }
+        vector<pair<Byte, Byte>> _diagpairs;
+        for (auto x : diag_tests) {
+          auto _f0 =
+              x[0] == 0 ? sf_center : local_nbh_f[(i + faces[x[0] - 1]) % 4];
+          auto _f1 =
+              x[2] == 0 ? sf_center : local_nbh_f[(i + faces[x[2] - 1] 0) % 4];
+          _diagpairs.push_back(_diagpair(_findvertex(_f0, pos[x[0]], x[1]),
+                                         _findvertex(_f1, pos[x[2]], x[3])));
+        }
+        for (auto x : _diagpairs) {
+          if (diagonals.find(x) != diagonals.end()) {
+            pass = false;
+            break;
+          }
+        }
+        if (!pass) {
+          continue;
+        }
+        res.push_back({sfcase, faces});
+      }
+    };
+
     // F1
     res.push_back({SFCase::F1, {sf_center}});
     // F2
-    res.push_back({SFCase::F2, {sf_center}});
-
+    checkSFCase(4, SFCase::F2, {0, 3}, {true, true}, {0},
+                {{0, 3, 1, 3}, {0, 2, 1, 2}});
+    // preserve for check
+    /*
+    for (int i = 0; i < 4; ++i) {
+      if (corn_conn[i] || corn_conn[(i + 3) % 4]) {
+        continue;
+      }
+      auto pos1 = _findpos(sf_center, local_nbh_f[i]);
+      auto pos2 = _findpos(local_nbh_f[i], sf_center);
+      pair test1 = _diagpair(_findvertex(sf_center, pos1, 3),
+                             _findvertex(local_nbh_f[i], pos2, 3));
+      pair test2 = _diagpair(_findvertex(sf_center, pos1, 2),
+                             _findvertex(local_nbh_f[i], pos2, 2));
+      if (diagonals.find(test1) != diagonals.end() ||
+          diagonals.find(test2) != diagonals.end()) {
+        continue;
+      }
+      res.push_back({SFCase::F2, {sf_center, local_nbh_f[i]}});
+    }
+    */
+    // F3_1
+    checkSFCase(2, SFCase::F3_1, {0, 1, 2, 3}, {true, true, true, true}, {0, 2},
+                {{0, 3, 1, 3},
+                 {0, 2, 1, 2},
+                 {0, 0, 2, 2},
+                 {0, 1, 2, 3},
+                 {1, 2, 2, 2},
+                 {1, 3, 2, 3}});
+    /*
+    for (int i = 0; i < 2; ++i) {
+      if (corn_conn[i] || corn_conn[(i + 1) % 4] || corn_conn[(i + 2) % 4] ||
+          corn_conn[(i + 3) % 4]) {
+        continue;
+      }
+      auto pos1 = _findpos(sf_center, local_nbh_f[i]);
+      auto pos2 = _findpos(local_nbh_f[i], sf_center);
+      auto pos3 = _findpos(local_nbh_f[(i + 2) % 4], sf_center);
+      pair test1 = _diagpair(_findvertex(sf_center, pos1, 3),
+                             _findvertex(local_nbh_f[i], pos2, 3));
+      pair test2 = _diagpair(_findvertex(sf_center, pos1, 2),
+                             _findvertex(local_nbh_f[i], pos2, 2));
+      pair test3 = _diagpair(_findvertex(sf_center, pos1, 0),
+                             _findvertex(local_nbh_f[(i + 2) % 4], pos3, 2));
+      pair test4 = _diagpair(_findvertex(sf_center, pos1, 1),
+                             _findvertex(local_nbh_f[(i + 2) % 4], pos3, 3));
+      pair test5 = _diagpair(_findvertex(local_nbh_f[i], pos2, 2),
+                             _findvertex(local_nbh_f[(i + 2) % 4], pos3, 2));
+      pair test6 = _diagpair(_findvertex(local_nbh_f[i], pos2, 3),
+                             _findvertex(local_nbh_f[(i + 2) % 4], pos3, 3));
+      if (diagonals.find(test1) != diagonals.end() ||
+          diagonals.find(test2) != diagonals.end() ||
+          diagonals.find(test3) != diagonals.end() ||
+          diagonals.find(test4) != diagonals.end() ||
+          diagonals.find(test5) != diagonals.end() ||
+          diagonals.find(test6) != diagonals.end()) {
+        continue;
+      }
+      res.push_back({SFCase::F3_1,
+                     {sf_center, local_nbh_f[i], local_nbh_f[(i + 2) % 4]}});
+    }
+    */
+    // F3_2
+    checkSFCase(4, SFCase::F3_2, {0, 1, 3}, {false, true, true}, {0, 1},
+                {{0, 3, 1, 3}, {0, 2, 1, 2}, {0, 0, 2, 3}, {1, 2, 2, 3}});
+    // F4
+    checkSFCase(4, SFCase::F4, {0, 1, 2, 3}, {false, false, true, true},
+                {0, 1, 2},
+                {{0, 3, 1, 3},
+                 {0, 2, 1, 2},
+                 {0, 0, 3, 2},
+                 {0, 1, 3, 3},
+                 {1, 3, 3, 3},
+                 {1, 2, 3, 2}});
+    // F5
+    checkSFCase(1, SFCase::F5, {0, 1, 2, 3}, {false, false, false, false},
+                {0, 1, 2, 3},
+                {{0, 3, 1, 3},
+                 {0, 2, 1, 2},
+                 {0, 0, 3, 2},
+                 {0, 1, 3, 3},
+                 {1, 3, 3, 3},
+                 {1, 2, 3, 2}});
     return res;
   };
   for (int i = 0; i < m_size; ++i) {
@@ -567,4 +708,3 @@ vector<pair<SFCase, vector<Byte>>> HexModu::EnumerateAllSFcase() {
   }
   return res;
 }
-*/

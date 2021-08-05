@@ -23,7 +23,8 @@ private:
 
   // Hex2Surface
   vector<Byte> m_mapping_v;
-  size_t m_size;
+  size_t m_size_f;
+  size_t m_size_v;
   ModuSurface();
 
 public:
