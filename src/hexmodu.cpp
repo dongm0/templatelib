@@ -574,7 +574,7 @@ vector<pair<SFCase, vector<Byte>>> HexModu::EnumerateAllSFcase() {
           continue;
         }
         vector<Byte> pos;
-        pos.push_back(_findpos(sf_center, local_nbh_f[(i + faces[j]) % 4]));
+        pos.push_back(_findpos(sf_center, local_nbh_f[(i + faces[0]) % 4]));
         for (int j = 0; j < faces.size(); ++j) {
           pos.push_back(_findpos(local_nbh_f[(i + faces[j]) % 4], sf_center));
         }
@@ -583,7 +583,7 @@ vector<pair<SFCase, vector<Byte>>> HexModu::EnumerateAllSFcase() {
           auto _f0 =
               x[0] == 0 ? sf_center : local_nbh_f[(i + faces[x[0] - 1]) % 4];
           auto _f1 =
-              x[2] == 0 ? sf_center : local_nbh_f[(i + faces[x[2] - 1] 0) % 4];
+              x[2] == 0 ? sf_center : local_nbh_f[(i + faces[x[2] - 1]) % 4];
           _diagpairs.push_back(_diagpair(_findvertex(_f0, pos[x[0]], x[1]),
                                          _findvertex(_f1, pos[x[2]], x[3])));
         }
