@@ -240,6 +240,7 @@ pair<bool, array<Byte, N>> IntersectEdge(array<Byte, 4> f1, array<Byte, 4> f2) {
   return {true, res};
 }
 
+// c1 and c2 are neighbors, get corresponding pos in c2 of "pos" in c1
 FaceDir NbhCPosDir(Byte c1, array<Byte, 6> c1_c, array<Byte, 8> c1_v, Byte c2,
                    array<Byte, 6> c2_c, array<Byte, 8> c2_v, FaceDir pos) {
   FaceDir c2inc1 = NbhCDir(c1_c, c2);
@@ -313,13 +314,8 @@ bool ReWriteModu(Byte st, FaceDir xf_dir, FaceDir yf_dir,
   while (!bfsqueue.empty()) {
     auto [cur_c, cur_xf_d, cur_yf_d] = bfsqueue.front();
     bfsqueue.pop();
-    array<Byte, 8> cur_c_nbhv = {
-        m_nbh_v[cur_c * 8 + 0], m_nbh_v[cur_c * 8 + 1], m_nbh_v[cur_c * 8 + 2],
-        m_nbh_v[cur_c * 8 + 3], m_nbh_v[cur_c * 8 + 4], m_nbh_v[cur_c * 8 + 5],
-        m_nbh_v[cur_c * 8 + 6], m_nbh_v[cur_c * 8 + 7]};
-    array<Byte, 6> cur_c_nbhc = {
-        m_nbh_c[cur_c * 6 + 0], m_nbh_c[cur_c * 6 + 1], m_nbh_c[cur_c * 6 + 2],
-        m_nbh_c[cur_c * 6 + 3], m_nbh_c[cur_c * 6 + 4], m_nbh_c[cur_c * 6 + 5]};
+    array<Byte, 8> cur_c_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, cur_c);
+    array<Byte, 6> cur_c_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, cur_c);
     auto [ndir_v, ndir_c] =
         RePosCell({cur_c_nbhv, cur_c_nbhc}, cur_xf_d, cur_yf_d);
     for (int i = 0; i < 8; ++i) {
@@ -336,15 +332,8 @@ bool ReWriteModu(Byte st, FaceDir xf_dir, FaceDir yf_dir,
       auto next_c = ndir_c[i];
       if (mapping_c_o2n[next_c] == -1) {
         mapping_c_o2n[next_c] = cnum++;
-        array<Byte, 8> next_c_nbhv = {
-            m_nbh_v[next_c * 8 + 0], m_nbh_v[next_c * 8 + 1],
-            m_nbh_v[next_c * 8 + 2], m_nbh_v[next_c * 8 + 3],
-            m_nbh_v[next_c * 8 + 4], m_nbh_v[next_c * 8 + 5],
-            m_nbh_v[next_c * 8 + 6], m_nbh_v[next_c * 8 + 7]};
-        array<Byte, 6> next_c_nbhc = {
-            m_nbh_c[next_c * 6 + 0], m_nbh_c[next_c * 6 + 1],
-            m_nbh_c[next_c * 6 + 2], m_nbh_c[next_c * 6 + 3],
-            m_nbh_c[next_c * 6 + 4], m_nbh_c[next_c * 6 + 5]};
+        auto next_c_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, next_c);
+        auto next_c_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, next_c);
         bfsqueue.push({next_c,
                        NbhCPosDir(cur_c, cur_c_nbhc, cur_c_nbhv, next_c,
                                   next_c_nbhc, next_c_nbhv, xfpos[i]),
@@ -415,9 +404,9 @@ void HexModu::Regular() {
   for (size_t i = 0; i < m_size; ++i) {
     for (size_t posf = 0; posf < 6; ++posf) {
       for (size_t posd = 0; posd < 4; ++posd) {
-        if (ReWriteModu(i, static_cast<FaceDir>(posf),
-                        AdjFace(static_cast<FaceDir>(posf))[posd], cur_nbh_v,
-                        cur_nbh_c, m_nbh_v, m_nbh_c, best_nbh_v, best_nbh_c)) {
+        if (ReWriteModu(i, FaceDir(posf), AdjFace(FaceDir(posf))[posd],
+                        cur_nbh_v, cur_nbh_c, m_nbh_v, m_nbh_c, best_nbh_v,
+                        best_nbh_c)) {
           best_nbh_v.swap(cur_nbh_v);
           best_nbh_c.swap(cur_nbh_c);
         }
@@ -426,6 +415,27 @@ void HexModu::Regular() {
   }
   m_nbh_v.swap(best_nbh_v);
   m_nbh_c.swap(best_nbh_c);
+}
+
+tuple<Byte, Byte, Byte> HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir,
+                                                Byte next_sf_dir) {
+  auto _cur_c = cur_c;
+  auto _cur_sf_dir = FaceDir(cur_sf_dir), _next_sf_dir = FaceDir(next_sf_dir);
+  auto next_c = m_nbh_c[cur_c * 6 + next_sf_dir];
+  while (next_c != -1) {
+    /*loop until meet surface*/
+    auto c1_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, _cur_c);
+    auto c1_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, _cur_c);
+    auto c2_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, next_c);
+    auto c2_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, next_c);
+    _next_sf_dir = NbhCPosDir(_cur_c, c1_nbhc, c1_nbhv, next_c, c2_nbhc,
+                              c2_nbhv, _cur_sf_dir);
+    _cur_sf_dir = NbhCDir(c2_nbhc, _cur_c);
+    _cur_c = next_c;
+    next_c = m_nbh_c[_cur_c * 6 + next_sf_dir];
+  }
+  return make_tuple(_cur_c, static_cast<Byte>(_next_sf_dir),
+                    static_cast<Byte>(_cur_sf_dir));
 }
 
 ModuSurface HexModu::Surface() {
@@ -449,27 +459,6 @@ ModuSurface HexModu::Surface() {
     return {-1, -1, -1};
   }();
 
-  auto getAdjSurface = [&](Byte cur_c, Byte cur_cf_dir, Byte next_nbh_dir) {
-    auto _cur_c = cur_c;
-    auto _cur_cf_dir = FaceDir(cur_cf_dir),
-         _next_nbh_dir = FaceDir(next_nbh_dir);
-    auto next_c = m_nbh_c[cur_c * 6 + static_cast<unsigned int>(next_nbh_dir)];
-    while (next_c != -1) {
-      /*loop until meet surface*/
-      auto c1_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, _cur_c);
-      auto c1_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, _cur_c);
-      auto c2_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, next_c);
-      auto c2_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, next_c);
-      _next_nbh_dir = NbhCPosDir(_cur_c, c1_nbhc, c1_nbhv, next_c, c2_nbhc,
-                                 c2_nbhv, _cur_cf_dir);
-      _cur_cf_dir = NbhCDir(c2_nbhc, _cur_c);
-      _cur_c = next_c;
-      next_c = m_nbh_c[_cur_c * 6 + static_cast<unsigned int>(next_nbh_dir)];
-    }
-    return make_tuple(_cur_c, static_cast<Byte>(_cur_cf_dir),
-                      static_cast<Byte>(_next_nbh_dir));
-  };
-
   // bfs
   int fnum = 0, vnum = 0;
   queue<tuple<Byte, Byte, Byte>> bfsqueue;
@@ -484,7 +473,7 @@ ModuSurface HexModu::Surface() {
         FindElementInLine(dirs.begin(), dirs.end(), FaceDir(cur_next_dir)) -
         dirs.begin();
     for (int i = 0; i < 4; ++i) {
-      auto [next_c, next_sf_dir, next_next_dir] = getAdjSurface(
+      auto [next_c, next_sf_dir, next_next_dir] = GetAdjSurface_(
           cur_c, cur_sf_dir, static_cast<Byte>(dirs[(_pos + i) % 4]));
       if (mapping_f_h2s[next_c * 6 + next_sf_dir] == -1) {
         mapping_f_h2s[next_c * 6 + next_sf_dir] = fnum++;
@@ -706,5 +695,73 @@ vector<pair<SFCase, vector<Byte>>> HexModu::EnumerateAllSFcase() {
   for (auto &x : recording) {
     res.push_back(std::move(x.second));
   }
+  return res;
+}
+
+HexModu HexModu::AddHexAt(const ModuSurface &surface,
+                          const pair<SFCase, vector<Byte>> &sfc) {
+  HexModu res(*this);
+  int vnum = surface.m_mapping_v.size();
+  res.m_size += 1;
+  Byte ncell = res.m_size - 1;
+  res.m_nbh_c.insert(m_nbh_c.end(), {-1, -1, -1, -1, -1, -1});
+  res.m_nbh_v.insert(m_nbh_v.end(), {-1, -1, -1, -1, -1, -1, -1, -1});
+
+  auto _it = FindElementInLine(surface.m_mapping_f.begin(),
+                               surface.m_mapping_f.end(), sfc.second[0]);
+  Byte base_cell_num = (_it - surface.m_mapping_f.begin()) / 6;
+  Byte base_cell_pos = (_it - surface.m_mapping_f.begin()) % 6;
+  res.m_nbh_c[base_cell_num * 6 + base_cell_pos] = ncell;
+  res.m_nbh_c[ncell * 6 + 5] = base_cell_num;
+  auto _tmpface =
+      FaceVertices(GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, base_cell_num),
+                   FaceDir(base_cell_pos));
+  res.m_nbh_v[ncell * 8 + 0] = _tmpface[3];
+  res.m_nbh_v[ncell * 8 + 1] = _tmpface[0];
+  res.m_nbh_v[ncell * 8 + 2] = _tmpface[1];
+  res.m_nbh_v[ncell * 8 + 3] = _tmpface[2];
+
+  FaceDir xfpos[6] = {FaceDir::YF, FaceDir::ZB, FaceDir::ZF,
+                      FaceDir::XB, FaceDir::XF, FaceDir::YB};
+  FaceDir yfpos[6] = {FaceDir::ZF, FaceDir::YB, FaceDir::XF,
+                      FaceDir::ZB, FaceDir::YF, FaceDir::XB};
+
+  auto adj_fs = AdjFace(FaceDir(base_cell_pos));
+  for (int i = 0; i < 4; ++i) {
+    auto [next_c, next_sf_pos, next_next_pos] = GetAdjSurface_(
+        base_cell_num, base_cell_pos, static_cast<Byte>(adj_fs[i]));
+    if (FindElementInLine(sfc.second.begin(), sfc.second.end(),
+                          surface.m_mapping_f[next_c * 6 + next_sf_pos]) !=
+        sfc.second.end()) {
+      assert(res.m_nbh_c[next_c * 6 + next_sf_pos] == -1);
+      res.m_nbh_c[next_c * 6 + next_sf_pos] = ncell;
+      res.m_nbh_c[ncell * 6 + i] = next_c;
+
+      auto sf2 = surface.m_mapping_f[next_c * 6 + next_next_pos];
+      auto sf1 = surface.m_mapping_f[base_cell_num * 6 + base_cell_pos];
+
+      auto _pos =
+          FindElementInLine(surface.m_mapping_f.begin() + sf2 * 4,
+                            surface.m_mapping_f.begin() + sf2 * 4 + 4, sf1) -
+          surface.m_mapping_f.begin() + sf2 * 4;
+      res.m_nbh_v[ncell * 8 + 4 + i] =
+          FindElementInLine(surface.m_mapping_v.begin(),
+                            surface.m_mapping_v.end(),
+                            surface.m_mapping_v[sf2 * 4 + 2]) -
+          surface.m_mapping_v.begin();
+      res.m_nbh_v[ncell * 8 + 4 + (i + 1) % 4] =
+          FindElementInLine(surface.m_mapping_v.begin(),
+                            surface.m_mapping_v.end(),
+                            surface.m_mapping_v[sf2 * 4 + 3]) -
+          surface.m_mapping_v.begin();
+    }
+    for (int i = 0; i < 4; ++i) {
+      if (res.m_nbh_v[ncell * 8 + 4 + i] == -1) {
+        res.m_nbh_v[ncell * 8 + 4 + i] = vnum++;
+      }
+    }
+  }
+
+  res.Regular();
   return res;
 }

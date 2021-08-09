@@ -37,6 +37,10 @@ private:
   vector<Byte> m_nbh_c;
   size_t m_size;
 
+private:
+  tuple<Byte, Byte, Byte> GetAdjSurface_(Byte cur_c, Byte cur_sf_dir,
+                                         Byte next_sf_dir);
+
 public:
   HexModu()
       : m_nbh_v{0, 1, 2, 3, 4, 5, 6, 7}, m_nbh_c{-1, -1, -1, -1,
@@ -48,6 +52,8 @@ public:
   void Regular();
   ModuSurface Surface();
   vector<pair<SFCase, vector<Byte>>> EnumerateAllSFcase();
+  HexModu AddHexAt(const ModuSurface &surface,
+                   const pair<SFCase, vector<Byte>> &sfc);
 };
 
 #endif
