@@ -706,6 +706,7 @@ HexModu HexModu::AddHexAt(const ModuSurface &surface,
   Byte ncell = res.m_size - 1;
   res.m_nbh_c.insert(m_nbh_c.end(), {-1, -1, -1, -1, -1, -1});
   res.m_nbh_v.insert(m_nbh_v.end(), {-1, -1, -1, -1, -1, -1, -1, -1});
+  res.m_cell_sheet.insert(m_cell_sheet.end(), {-1, -1, -1, -1, -1, -1});
 
   auto _it = FindElementInLine(surface.m_mapping_f.begin(),
                                surface.m_mapping_f.end(), sfc.second[0]);
@@ -760,6 +761,51 @@ HexModu HexModu::AddHexAt(const ModuSurface &surface,
         res.m_nbh_v[ncell * 8 + 4 + i] = vnum++;
       }
     }
+
+    // sheet information update
+    for (auto d :
+         AdjFace(NbhCDir(GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+                         sfc.second[0]))) {
+      auto bc = sfc.second[0];
+      auto d_in_base =
+          NbhCPosDir(ncell, GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+                     GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, ncell), bc,
+                     GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, bc),
+                     GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, bc), d);
+      res.m_cell_sheet[ncell * 6 + static_cast<Byte>(d)] =
+          m_cell_sheet[bc * 6 + static_cast<Byte>(d_in_base)];
+    }
+
+    // possibly new sheet and sheet merge
+    Byte nsheet_num = m_sheet.size();
+    vector<Byte> sheet_tobe_merged;
+    for (auto d :
+         AdjFace(NbhCDir(GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+                         sfc.second[0]))) {
+      if (auto _nbhc = res.m_nbh_c[ncell * 6 + static_cast<Byte>(d)];
+          _nbhc != -1) {
+        auto d_in_nbhc = NbhCPosDir(
+            ncell, GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+            GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, ncell), _nbhc,
+            GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, _nbhc),
+            GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, _nbhc), FaceDir(4));
+        Byte sheet = m_cell_sheet[_nbhc * 6 + static_cast<Byte>(d_in_nbhc)];
+        if (sheet > nsheet_num) {
+          sheet_tobe_merged.push_back(sheet);
+        } else {
+          nsheet_num = sheet;
+        }
+      }
+    }
+    if (nsheet_num == m_sheet.size()) {
+      res.m_sheet.push_back({0, 0});
+    }
+    res.m_cell_sheet[ncell * 6 + 4] = nsheet_num;
+    res.m_cell_sheet[ncell * 6 + 5] = nsheet_num;
+    for (auto x : res.m_cell_sheet) {
+    }
+
+    // TODO: update sheet singularty
   }
 
   res.Regular();

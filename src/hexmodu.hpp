@@ -35,6 +35,8 @@ class HexModu {
 private:
   vector<Byte> m_nbh_v;
   vector<Byte> m_nbh_c;
+  vector<Byte> m_cell_sheet;
+  vector<pair<Byte, Byte>> m_sheet;
   size_t m_size;
 
 private:
@@ -45,9 +47,14 @@ public:
   HexModu()
       : m_nbh_v{0, 1, 2, 3, 4, 5, 6, 7}, m_nbh_c{-1, -1, -1, -1,
                                                  -1, -1, -1, -1},
-        m_size(1) {}
+        m_cell_sheet{0, 0, 1, 1, 2, 2}, m_sheet{make_pair(0, 0),
+                                                make_pair(0, 0),
+                                                make_pair(0, 0)},
+        m_size(1){};
   HexModu(const HexModu &rhs)
-      : m_nbh_v(rhs.m_nbh_v), m_nbh_c(rhs.m_nbh_c), m_size(rhs.m_size) {}
+      : m_nbh_v(rhs.m_nbh_v), m_nbh_c(rhs.m_nbh_c),
+        m_cell_sheet(rhs.m_cell_sheet), m_sheet(rhs.m_sheet),
+        m_size(rhs.m_size) {}
 
   void Regular();
   ModuSurface Surface();
