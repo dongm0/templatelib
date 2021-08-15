@@ -791,7 +791,11 @@ HexModu HexModu::AddHexAt(const ModuSurface &surface,
             GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, _nbhc), FaceDir(4));
         Byte sheet = m_cell_sheet[_nbhc * 6 + static_cast<Byte>(d_in_nbhc)];
         if (sheet > nsheet_num) {
-          sheet_tobe_merged.push_back(sheet);
+          if (FindElementInLine(sheet_tobe_merged.begin(),
+                                sheet_tobe_merged.end(),
+                                sheet) == sheet_tobe_merged.end()) {
+            sheet_tobe_merged.push_back(sheet);
+          }
         } else {
           nsheet_num = sheet;
         }
@@ -802,11 +806,29 @@ HexModu HexModu::AddHexAt(const ModuSurface &surface,
     }
     res.m_cell_sheet[ncell * 6 + 4] = nsheet_num;
     res.m_cell_sheet[ncell * 6 + 5] = nsheet_num;
-    for (auto x : res.m_cell_sheet) {
+    for (auto &x : res.m_cell_sheet) {
+      if (FindElementInLine(sheet_tobe_merged.begin(), sheet_tobe_merged.end(),
+                            x) != sheet_tobe_merged.end()) {
+        x = nsheet_num;
+      }
+    }
+
+    // delete merges sheets
+    for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
+      int sheet_m1 = sheet_tobe_merged[i];
+      int sheet = m_sheet.size() - 1 - i;
+      for (auto &x : m_cell_sheet) {
+        if (x == sheet)
+          x = sheet_m1;
+      }
+      swap(m_sheet[sheet_m1], m_sheet[sheet]);
+    }
+    for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
+      m_sheet.pop_back();
     }
 
     // TODO: update sheet singularty
-  }
+    }
 
   res.Regular();
   return res;
