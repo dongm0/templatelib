@@ -324,10 +324,12 @@ bool ReWriteModu(Byte st, FaceDir xf_dir, FaceDir yf_dir,
       }
       cur_nbh_v.push_back(mapping_v_o2n[ndir_v[i]]);
     }
-    FaceDir xfpos[6] = {FaceDir::YF, FaceDir::ZB, FaceDir::ZF,
-                        FaceDir::XB, FaceDir::XF, FaceDir::YB};
-    FaceDir yfpos[6] = {FaceDir::ZF, FaceDir::YB, FaceDir::XF,
-                        FaceDir::ZB, FaceDir::YF, FaceDir::XB};
+    FaceDir xfpos[6];
+    for (int i = 0; i < 6; ++i)
+      xfpos[i] = AdjFace(FaceDir(i))[0];
+    FaceDir yfpos[6];
+    for (int i = 0; i < 6; ++i)
+      yfpos[i] = AdjFace(FaceDir(i))[1];
     for (int i = 0; i < 6; ++i) {
       auto next_c = ndir_c[i];
       if (mapping_c_o2n[next_c] == -1) {
@@ -417,12 +419,15 @@ void HexModu::Regular() {
   m_nbh_c.swap(best_nbh_c);
 }
 
-tuple<Byte, Byte, Byte> HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir,
-                                                Byte next_sf_dir) {
+tuple<Byte, Byte, Byte, Byte>
+HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir, Byte next_sf_dir) {
   auto _cur_c = cur_c;
   auto _cur_sf_dir = FaceDir(cur_sf_dir), _next_sf_dir = FaceDir(next_sf_dir);
   auto next_c = m_nbh_c[cur_c * 6 + next_sf_dir];
+  Byte valence = 1;
   while (next_c != -1) {
+    valence += 1;
+
     /*loop until meet surface*/
     auto c1_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, _cur_c);
     auto c1_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, _cur_c);
@@ -435,7 +440,7 @@ tuple<Byte, Byte, Byte> HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir,
     next_c = m_nbh_c[_cur_c * 6 + next_sf_dir];
   }
   return make_tuple(_cur_c, static_cast<Byte>(_next_sf_dir),
-                    static_cast<Byte>(_cur_sf_dir));
+                    static_cast<Byte>(_cur_sf_dir), valence);
 }
 
 ModuSurface HexModu::Surface() {
@@ -473,8 +478,9 @@ ModuSurface HexModu::Surface() {
         FindElementInLine(dirs.begin(), dirs.end(), FaceDir(cur_next_dir)) -
         dirs.begin();
     for (int i = 0; i < 4; ++i) {
-      auto [next_c, next_sf_dir, next_next_dir] = GetAdjSurface_(
-          cur_c, cur_sf_dir, static_cast<Byte>(dirs[(_pos + i) % 4]));
+      auto [next_c, next_sf_dir, next_next_dir, _useless_valence] =
+          GetAdjSurface_(cur_c, cur_sf_dir,
+                         static_cast<Byte>(dirs[(_pos + i) % 4]));
       if (mapping_f_h2s[next_c * 6 + next_sf_dir] == -1) {
         mapping_f_h2s[next_c * 6 + next_sf_dir] = fnum++;
         bfsqueue.push({next_c, next_sf_dir, next_next_dir});
@@ -698,8 +704,8 @@ vector<pair<SFCase, vector<Byte>>> HexModu::EnumerateAllSFcase() {
   return res;
 }
 
-HexModu HexModu::AddHexAt(const ModuSurface &surface,
-                          const pair<SFCase, vector<Byte>> &sfc) {
+pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
+                                      const pair<SFCase, vector<Byte>> &sfc) {
   HexModu res(*this);
   int vnum = surface.m_mapping_v.size();
   res.m_size += 1;
@@ -722,22 +728,36 @@ HexModu HexModu::AddHexAt(const ModuSurface &surface,
   res.m_nbh_v[ncell * 8 + 2] = _tmpface[1];
   res.m_nbh_v[ncell * 8 + 3] = _tmpface[2];
 
-  FaceDir xfpos[6] = {FaceDir::YF, FaceDir::ZB, FaceDir::ZF,
-                      FaceDir::XB, FaceDir::XF, FaceDir::YB};
-  FaceDir yfpos[6] = {FaceDir::ZF, FaceDir::YB, FaceDir::XF,
-                      FaceDir::ZB, FaceDir::YF, FaceDir::XB};
-
   auto adj_fs = AdjFace(FaceDir(base_cell_pos));
   for (int i = 0; i < 4; ++i) {
-    auto [next_c, next_sf_pos, next_next_pos] = GetAdjSurface_(
+    auto [next_c, next_sf_pos, next_next_pos, local_valence] = GetAdjSurface_(
         base_cell_num, base_cell_pos, static_cast<Byte>(adj_fs[i]));
     if (FindElementInLine(sfc.second.begin(), sfc.second.end(),
                           surface.m_mapping_f[next_c * 6 + next_sf_pos]) !=
         sfc.second.end()) {
+      // dealt with valence
+      int sheetid = res.m_cell_sheet[base_cell_pos * 6 +
+                                     static_cast<Byte>(adj_fs[(i + 1) % 4])];
+      if (local_valence == 2) {
+        res.m_sheet[sheetid].first += 1;
+      } else if (local_valence == 4) {
+        res.m_sheet[sheetid].second += 1;
+      } else if (local_valence > 4) {
+        return {false, res};
+      }
+
       assert(res.m_nbh_c[next_c * 6 + next_sf_pos] == -1);
       res.m_nbh_c[next_c * 6 + next_sf_pos] = ncell;
-      res.m_nbh_c[ncell * 6 + i] = next_c;
-
+      {
+        // sequence of m_nbh_c is [XF, XB, YF, YB], but AdjFace returns faces in
+        // ccw sequence, thus [0,1,2,3] -> [0, 2, 1, 3]
+        int pos_in_ncell = i;
+        if (pos_in_ncell == 1)
+          pos_in_ncell = 2;
+        else if (pos_in_ncell == 2)
+          pos_in_ncell = 1;
+        res.m_nbh_c[ncell * 6 + pos_in_ncell] = next_c;
+      }
       auto sf2 = surface.m_mapping_f[next_c * 6 + next_next_pos];
       auto sf1 = surface.m_mapping_f[base_cell_num * 6 + base_cell_pos];
 
@@ -745,91 +765,157 @@ HexModu HexModu::AddHexAt(const ModuSurface &surface,
           FindElementInLine(surface.m_mapping_f.begin() + sf2 * 4,
                             surface.m_mapping_f.begin() + sf2 * 4 + 4, sf1) -
           surface.m_mapping_f.begin() + sf2 * 4;
-      res.m_nbh_v[ncell * 8 + 4 + i] =
+      // notice the i+1 and i+2 here, vertice sequence of bottom face is 1 pos
+      // ahead of FaceVerteice(ZB)
+      res.m_nbh_v[ncell * 8 + 4 + (i + 1) % 4] =
           FindElementInLine(surface.m_mapping_v.begin(),
                             surface.m_mapping_v.end(),
                             surface.m_mapping_v[sf2 * 4 + 2]) -
           surface.m_mapping_v.begin();
-      res.m_nbh_v[ncell * 8 + 4 + (i + 1) % 4] =
+      res.m_nbh_v[ncell * 8 + 4 + (i + 2) % 4] =
           FindElementInLine(surface.m_mapping_v.begin(),
                             surface.m_mapping_v.end(),
                             surface.m_mapping_v[sf2 * 4 + 3]) -
           surface.m_mapping_v.begin();
     }
-    for (int i = 0; i < 4; ++i) {
-      if (res.m_nbh_v[ncell * 8 + 4 + i] == -1) {
-        res.m_nbh_v[ncell * 8 + 4 + i] = vnum++;
-      }
+  }
+  for (int i = 0; i < 4; ++i) {
+    if (res.m_nbh_v[ncell * 8 + 4 + i] == -1) {
+      res.m_nbh_v[ncell * 8 + 4 + i] = vnum++;
     }
+  }
 
-    // sheet information update
-    for (auto d :
-         AdjFace(NbhCDir(GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
-                         sfc.second[0]))) {
-      auto bc = sfc.second[0];
-      auto d_in_base =
-          NbhCPosDir(ncell, GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
-                     GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, ncell), bc,
-                     GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, bc),
-                     GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, bc), d);
-      res.m_cell_sheet[ncell * 6 + static_cast<Byte>(d)] =
-          m_cell_sheet[bc * 6 + static_cast<Byte>(d_in_base)];
-    }
+  // sheet information update
+  for (auto d :
+       AdjFace(NbhCDir(GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+                       sfc.second[0]))) /*notice d here is dir in ncell, so to
+                                           base_cell it's clockwise*/
+  {
+    auto bc = sfc.second[0];
+    auto d_in_base =
+        NbhCPosDir(ncell, GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+                   GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, ncell), bc,
+                   GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, bc),
+                   GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, bc), d);
+    res.m_cell_sheet[ncell * 6 + static_cast<Byte>(d)] =
+        m_cell_sheet[bc * 6 + static_cast<Byte>(d_in_base)];
+  }
 
-    // possibly new sheet and sheet merge
-    Byte nsheet_num = m_sheet.size();
-    vector<Byte> sheet_tobe_merged;
-    for (auto d :
-         AdjFace(NbhCDir(GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
-                         sfc.second[0]))) {
-      if (auto _nbhc = res.m_nbh_c[ncell * 6 + static_cast<Byte>(d)];
-          _nbhc != -1) {
-        auto d_in_nbhc = NbhCPosDir(
-            ncell, GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
-            GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, ncell), _nbhc,
-            GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, _nbhc),
-            GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, _nbhc), FaceDir(4));
-        Byte sheet = m_cell_sheet[_nbhc * 6 + static_cast<Byte>(d_in_nbhc)];
-        if (sheet > nsheet_num) {
-          if (FindElementInLine(sheet_tobe_merged.begin(),
-                                sheet_tobe_merged.end(),
-                                sheet) == sheet_tobe_merged.end()) {
-            sheet_tobe_merged.push_back(sheet);
-          }
-        } else {
-          nsheet_num = sheet;
+  // possibly new sheet and sheet merge
+  Byte nsheet_num = m_sheet.size();
+  vector<Byte> sheet_tobe_merged;
+  for (auto d :
+       AdjFace(NbhCDir(GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+                       sfc.second[0]))) {
+    if (auto _nbhc = res.m_nbh_c[ncell * 6 + static_cast<Byte>(d)];
+        _nbhc != -1) {
+      auto d_in_nbhc = NbhCPosDir(
+          ncell, GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, ncell),
+          GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, ncell), _nbhc,
+          GetPartInLine<decltype(m_nbh_c), 6>(m_nbh_c, _nbhc),
+          GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, _nbhc), FaceDir(4));
+      Byte sheet = m_cell_sheet[_nbhc * 6 + static_cast<Byte>(d_in_nbhc)];
+      if (sheet > nsheet_num) {
+        if (FindElementInLine(sheet_tobe_merged.begin(),
+                              sheet_tobe_merged.end(),
+                              sheet) == sheet_tobe_merged.end()) {
+          sheet_tobe_merged.push_back(sheet);
         }
+      } else {
+        nsheet_num = sheet;
       }
     }
-    if (nsheet_num == m_sheet.size()) {
-      res.m_sheet.push_back({0, 0});
+  }
+  if (nsheet_num == m_sheet.size()) {
+    // add new sheet
+    res.m_sheet.push_back({0, 0});
+  }
+  res.m_cell_sheet[ncell * 6 + 4] = nsheet_num;
+  res.m_cell_sheet[ncell * 6 + 5] = nsheet_num;
+  for (auto &x : res.m_cell_sheet) {
+    if (FindElementInLine(sheet_tobe_merged.begin(), sheet_tobe_merged.end(),
+                          x) != sheet_tobe_merged.end()) {
+      x = nsheet_num;
     }
-    res.m_cell_sheet[ncell * 6 + 4] = nsheet_num;
-    res.m_cell_sheet[ncell * 6 + 5] = nsheet_num;
+  }
+
+  // delete merges sheets
+  for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
+    int sheet_m1 = sheet_tobe_merged[i];
+    int sheet = res.m_sheet.size() - 1 - i;
     for (auto &x : res.m_cell_sheet) {
-      if (FindElementInLine(sheet_tobe_merged.begin(), sheet_tobe_merged.end(),
-                            x) != sheet_tobe_merged.end()) {
-        x = nsheet_num;
-      }
+      if (x == sheet)
+        x = sheet_m1;
     }
+    swap(res.m_sheet[sheet_m1], res.m_sheet[sheet]);
+  }
+  for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
+    res.m_sheet.pop_back();
+  }
 
-    // delete merges sheets
-    for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
-      int sheet_m1 = sheet_tobe_merged[i];
-      int sheet = m_sheet.size() - 1 - i;
-      for (auto &x : m_cell_sheet) {
-        if (x == sheet)
-          x = sheet_m1;
-      }
-      swap(m_sheet[sheet_m1], m_sheet[sheet]);
+  array<Byte, 4> _nbhcs = [&]() {
+    array<Byte, 4> _r;
+    auto base_dir =
+        NbhCDir(GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, 6), base_cell_num);
+    for (int i = 0; i < 4; ++i) {
+      auto _local_dir = AdjFace(FaceDir(base_dir))[i];
+      _r[i] = res.m_nbh_c[ncell * 6 + static_cast<Byte>(_local_dir)];
     }
-    for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
-      m_sheet.pop_back();
-    }
+    return _r;
+  }();
+  for (int i = 0; i < 4; ++i) {
+    // the AdjFace sequence of base_cell and ncell (clockwise or ccw) here
+    // doesn't matter, both are okay
+    if (_nbhcs[i] != -1 && _nbhcs[(i + 1) % 4] != -1) {
+      auto _nbhcs_i_next_pos = NbhCPosDir(
+          ncell, GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, ncell),
+          GetPartInLine<vector<Byte>, 8>(res.m_nbh_v, ncell), _nbhcs[i],
+          GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, _nbhcs[i]),
+          GetPartInLine<vector<Byte>, 8>(res.m_nbh_v, _nbhcs[i]),
+          NbhCDir(GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, ncell),
+                  _nbhcs[(i + 1) % 4]) /*pos of i+1 in ncell*/);
 
-    // TODO: update sheet singularty
+      // original modu
+      auto _nbhcs_i_ncell_pos = NbhCDir(
+          GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, _nbhcs[i]), ncell);
+      auto [_unused_1, _unused_2, _unused_3, valence] =
+          GetAdjSurface_(_nbhcs[i], static_cast<Byte>(_nbhcs_i_ncell_pos),
+                         static_cast<Byte>(_nbhcs_i_next_pos));
+      if (valence == 2) {
+      }
+      int sheetid = res.m_cell_sheet[ncell * 6 + 5];
+      if (valence == 2) {
+        res.m_sheet[sheetid].first += 1;
+      } else if (valence == 4) {
+        res.m_sheet[sheetid].second += 1;
+      } else if (valence > 4) {
+        return {false, res};
+      }
+
+      /*
+      static_cast<Byte>(AdjFace(FaceDir(base_cell_pos))[i]));
+      if (res.m_nbh_c[next_cell * 6 + next_sf] != -1) {
+      }
+      */
     }
+  }
 
   res.Regular();
-  return res;
+  res.m_size = res.m_nbh_c.size() / 6;
+  return {true, res};
+}
+
+bool HexModu::HasHangedElement() {
+  for (int i = 0; i < m_size; ++i) {
+    int r = 0;
+    for (int j = 0; j < 3; ++j) {
+      if (m_nbh_c[i * 6 + j * 2] == -1 && m_nbh_c[i * 6 + j * 2 + 1] == -1) {
+        r += 1;
+      }
+    }
+    if (r >= 2) {
+      return true;
+    }
+  }
+  return false;
 }
