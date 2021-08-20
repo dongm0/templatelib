@@ -10,9 +10,13 @@ using namespace std;
 enum class SFCase { F1, F2, F3_1, F3_2, F4, F5 };
 
 class HexModu;
+class StoreSurface;
+class StoreModu;
+class moduhash_;
 
 class ModuSurface {
   friend class HexModu;
+  friend class StoreSurface;
 
 private:
   vector<Byte> m_nbh_f;
@@ -32,6 +36,9 @@ public:
 };
 
 class HexModu {
+  friend class StoreModu;
+  friend class moduhash_;
+
 private:
   vector<Byte> m_nbh_v;
   vector<Byte> m_nbh_c;
@@ -50,7 +57,7 @@ public:
         m_cell_sheet{0, 0, 1, 1, 2, 2}, m_sheet{make_pair(0, 0),
                                                 make_pair(0, 0),
                                                 make_pair(0, 0)},
-        m_size(1){};
+        m_size(1) {}
   HexModu(const HexModu &rhs)
       : m_nbh_v(rhs.m_nbh_v), m_nbh_c(rhs.m_nbh_c),
         m_cell_sheet(rhs.m_cell_sheet), m_sheet(rhs.m_sheet),
@@ -63,6 +70,9 @@ public:
                                const pair<SFCase, vector<Byte>> &sfc);
 
   bool HasHangedElement();
+
+  bool operator<(const HexModu &rhs) const;
+  size_t size() const { return m_size; }
 };
 
 #endif

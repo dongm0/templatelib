@@ -900,6 +900,15 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
     }
   }
 
+  // check for unfit sheet
+  for (int i = 0; i < 6; i += 2) {
+    auto sheetnum = res.m_cell_sheet[ncell * 6 + i];
+    auto &sheet = res.m_sheet[sheetnum];
+    if (abs(sheet.first - sheet.second) > 5) {
+      return {false, res};
+    }
+  }
+
   res.Regular();
   res.m_size = res.m_nbh_c.size() / 6;
   return {true, res};
@@ -918,4 +927,16 @@ bool HexModu::HasHangedElement() {
     }
   }
   return false;
+}
+
+bool HexModu::operator<(const HexModu &rhs) const {
+  if (m_nbh_c < rhs.m_nbh_c) {
+    return true;
+  } else if (m_nbh_c > rhs.m_nbh_c) {
+    return false;
+  } else if (m_nbh_v < rhs.m_nbh_v) {
+    return true;
+  } else {
+    return false;
+  }
 }
