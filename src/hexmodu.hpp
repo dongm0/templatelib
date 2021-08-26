@@ -29,9 +29,9 @@ private:
   vector<Byte> m_mapping_v;
   size_t m_size_f;
   size_t m_size_v;
-  ModuSurface();
 
 public:
+  ModuSurface() : m_size_f(0), m_size_v(0) {}
   void Regular();
 };
 
@@ -45,6 +45,7 @@ private:
   vector<Byte> m_cell_sheet;
   vector<pair<Byte, Byte>> m_sheet;
   size_t m_size;
+  size_t m_size_v;
 
 private:
   tuple<Byte, Byte, Byte, Byte> GetAdjSurface_(Byte cur_c, Byte cur_sf_dir,
@@ -52,26 +53,27 @@ private:
 
 public:
   HexModu()
-      : m_nbh_v{0, 1, 2, 3, 4, 5, 6, 7}, m_nbh_c{-1, -1, -1, -1,
-                                                 -1, -1, -1, -1},
+      : m_nbh_v{0, 1, 2, 3, 4, 5, 6, 7}, m_nbh_c{-1, -1, -1, -1, -1, -1},
         m_cell_sheet{0, 0, 1, 1, 2, 2}, m_sheet{make_pair(0, 0),
                                                 make_pair(0, 0),
                                                 make_pair(0, 0)},
-        m_size(1) {}
+        m_size(1), m_size_v(8) {}
   HexModu(const HexModu &rhs)
       : m_nbh_v(rhs.m_nbh_v), m_nbh_c(rhs.m_nbh_c),
         m_cell_sheet(rhs.m_cell_sheet), m_sheet(rhs.m_sheet),
-        m_size(rhs.m_size) {}
+        m_size(rhs.m_size), m_size_v(rhs.m_size_v) {}
 
   void Regular();
   ModuSurface Surface();
-  vector<pair<SFCase, vector<Byte>>> EnumerateAllSFcase();
+  vector<pair<SFCase, vector<Byte>>> EnumerateAllSFcase(ModuSurface &cursf);
   pair<bool, HexModu> AddHexAt(const ModuSurface &surface,
                                const pair<SFCase, vector<Byte>> &sfc);
 
   bool HasHangedElement();
 
   bool operator<(const HexModu &rhs) const;
+  bool operator==(const HexModu &rhs) const;
+  // bool operator==(const HexModu &rhs);
   size_t size() const { return m_size; }
 };
 

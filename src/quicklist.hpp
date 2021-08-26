@@ -1,12 +1,13 @@
 #ifndef QUICKLIST_H
 #define QUICKLIST_H
 
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
-// linklist的实现抄了这个
+// implementation of linklist referenced
 // https://blog.csdn.net/sinat_31275315/article/details/108129418
-// 还有这个
+// and
 // https://blog.csdn.net/juicewyh/article/details/82845320
 
 template <typename _T, typename _Hash> class QuickList;
@@ -57,7 +58,7 @@ public:
   bool operator==(const Self &_rhs) const {
     return m_cur_node == _rhs.m_cur_node;
   }
-  friend class QuickList<_T>;
+  template <typename _T, typename _Hash> friend class QuickList;
 };
 
 template <typename _T, typename _Hash> class QuickList {
@@ -83,11 +84,11 @@ public:
       m_hash[x] = (--end()).m_cur_node;
     }
   }
-  QuickList<_T, _Hash> &operator=(const QuickList<_T> _rhs) {
+  QuickList<_T, _Hash> &operator=(const QuickList<_T, _Hash> _rhs) {
     if (*this == _rhs) {
       return this;
     }
-    clear();
+    Clear();
     for (auto x : _rhs) {
       PushBack(x);
       m_hash[x] = (--end()).m_cur_node;
@@ -122,7 +123,7 @@ public:
   bool Empty() const { return m_hash.empty(); }
   iterator Insert(iterator position, const _T &value) {
     if (m_hash.find(value) != m_hash.end()) {
-      return m_hash.find(value);
+      return iterator(m_hash[value]);
       // throw std::runtime_error("data alreasy in quicklist.");
     }
     auto _p = position.m_cur_node->m_prev;

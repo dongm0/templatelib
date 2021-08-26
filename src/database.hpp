@@ -13,7 +13,7 @@ public:
 
   StoreSurface(const ModuSurface &surface)
       : nbh_c(surface.m_nbh_f), nbh_v(surface.m_nbh_v) {}
-  bool operator==(const StoreSurface &rhs) {
+  bool operator==(const StoreSurface &rhs) const {
     return nbh_c == rhs.nbh_c && nbh_v == rhs.nbh_v;
   }
 };
@@ -26,9 +26,6 @@ public:
   StoreModu(const HexModu &modu) : nbh_c(modu.m_nbh_c), nbh_v(modu.m_nbh_v) {}
   bool operator==(const StoreModu &rhs) const {
     return nbh_v == rhs.nbh_v && nbh_c == rhs.nbh_c;
-  }
-  bool operator==(const StoreModu &rhs) {
-    return rhs.nbh_c == nbh_c && rhs.nbh_v == nbh_v;
   }
 };
 
@@ -66,12 +63,12 @@ struct ModuHash {
 
 class DataSet {
 public:
-  unordered_set<StoreModu, SurfaceHash> data;
+  unordered_set<StoreModu, ModuHash> data;
 };
 
 class DataBase {
 public:
-  unordered_map<StoreSurface, DataSet, ModuHash> database;
+  unordered_map<StoreSurface, DataSet, SurfaceHash> database;
 };
 
 #endif

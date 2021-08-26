@@ -4,6 +4,7 @@
 #include "quicklist.hpp"
 
 class moduhash_ {
+public:
   size_t operator()(const HexModu &s) const {
     std::hash<Byte> hasher;
     size_t seed = s.m_nbh_c.size() + s.m_nbh_v.size() + 2;
@@ -29,7 +30,7 @@ void worker() {
     auto h = bfsqueue.Front();
     auto sf = h.Surface();
     bfsqueue.PopFront();
-    for (auto sfc : h.EnumerateAllSFcase()) {
+    for (auto sfcs = h.EnumerateAllSFcase(sf); auto sfc : sfcs) {
       if (auto p = h.AddHexAt(sf, sfc); p.first == true) {
         bfsqueue.PushBack(p.second);
       }
@@ -44,3 +45,5 @@ void worker() {
     }
   }
 }
+
+int main() { worker(); }
