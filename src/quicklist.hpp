@@ -58,7 +58,7 @@ public:
   bool operator==(const Self &_rhs) const {
     return m_cur_node == _rhs.m_cur_node;
   }
-  template <typename _T, typename _Hash> friend class QuickList;
+  template <typename _Ty, typename _Hash> friend class QuickList;
 };
 
 template <typename _T, typename _Hash> class QuickList {

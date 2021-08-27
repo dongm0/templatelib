@@ -22,7 +22,7 @@ It FindElementInLine(It begin, It end, typename It::value_type tar) {
 template <typename Container, size_t size_n>
 array<typename Container::value_type, size_n>
 GetPartInLine(const Container &line, size_t index) {
-  array<Container::value_type, size_n> res;
+  array<typename Container::value_type, size_n> res;
   for (int i = 0; i < size_n; ++i) {
     res[i] = line.at(index * size_n + i);
   }
@@ -481,8 +481,7 @@ ModuSurface HexModu::Surface() {
     auto _tmp = GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, cur_c);
     auto face_vertices = FaceVertices(_tmp, FaceDir(cur_sf_dir));
     auto _pos =
-        FindElementInLine(dirs.begin(), dirs.end(), FaceDir(cur_next_dir)) -
-        dirs.begin();
+        find(dirs.begin(), dirs.end(), FaceDir(cur_next_dir)) - dirs.begin();
     for (int i = 0; i < 4; ++i) {
       auto [next_c, next_sf_dir, next_next_dir, _useless_valence] =
           GetAdjSurface_(cur_c, cur_sf_dir,
