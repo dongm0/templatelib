@@ -2,6 +2,7 @@
 #include "global_datatype.h"
 #include "hexmodu.hpp"
 #include "quicklist.hpp"
+#include <iostream>
 
 class moduhash_ {
 public:
@@ -21,6 +22,7 @@ public:
 };
 
 void worker() {
+  int cnt = 0;
   DataBase finished;
 
   QuickList<HexModu, moduhash_> bfsqueue;
@@ -43,6 +45,7 @@ void worker() {
       }
       db[ssf].data.insert(StoreModu(h));
     }
+    std::cout << cnt++ << std::endl;
   }
 }
 

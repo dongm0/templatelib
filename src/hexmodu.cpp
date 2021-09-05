@@ -1,6 +1,7 @@
 #include "hexmodu.hpp"
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 #include <map>
 #include <queue>
 #include <set>
@@ -10,7 +11,7 @@ namespace {
 using namespace std;
 
 template <typename It>
-It FindElementInLine(It begin, It end, typename It::value_type tar) {
+inline It FindElementInLine(It begin, It end, typename It::value_type tar) {
   for (auto it = begin; it != end; ++it) {
     if (*it == tar) {
       return it;
@@ -20,7 +21,7 @@ It FindElementInLine(It begin, It end, typename It::value_type tar) {
 }
 
 template <typename Container, size_t size_n>
-array<typename Container::value_type, size_n>
+inline array<typename Container::value_type, size_n>
 GetPartInLine(const Container &line, size_t index) {
   array<typename Container::value_type, size_n> res;
   for (int i = 0; i < size_n; ++i) {
@@ -49,7 +50,7 @@ FaceDir adj_face[24] = {FaceDir::YF, FaceDir::ZF, FaceDir::YB, FaceDir::ZB,
                         FaceDir::XF, FaceDir::YF, FaceDir::XB, FaceDir::YB,
                         FaceDir::XF, FaceDir::YB, FaceDir::XB, FaceDir::YF};
 
-array<Byte, 4> FaceVertices(array<Byte, 8> cell, FaceDir f) {
+inline array<Byte, 4> FaceVertices(array<Byte, 8> cell, FaceDir f) {
   if (f == FaceDir::XF) {
     return {cell[2], cell[6], cell[5], cell[1]};
   } else if (f == FaceDir::XB) {
@@ -63,51 +64,51 @@ array<Byte, 4> FaceVertices(array<Byte, 8> cell, FaceDir f) {
   } else if (f == FaceDir::ZB) {
     return {cell[2], cell[1], cell[0], cell[3]};
   } else {
-    // static_assert(false);
+    assert(false);
     return {-1, -1, -1, -1};
   }
 }
 
-pair<array<Byte, 8>, array<Byte, 6>>
+inline pair<array<Byte, 8>, array<Byte, 6>>
 ZrollCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
   auto [ori_v, ori_c] = ori;
   return {{ori_v[1], ori_v[2], ori_v[3], ori_v[0], ori_v[5], ori_v[6], ori_v[7],
            ori_v[4]},
           {ori_c[2], ori_c[3], ori_c[1], ori_c[0], ori_c[4], ori_c[5]}};
 }
-pair<array<Byte, 8>, array<Byte, 6>>
+inline pair<array<Byte, 8>, array<Byte, 6>>
 ZrollCCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
   auto [ori_v, ori_c] = ori;
   return {{ori_v[3], ori_v[0], ori_v[1], ori_v[2], ori_v[7], ori_v[4], ori_v[5],
            ori_v[6]},
           {ori_c[3], ori_c[2], ori_c[0], ori_c[1], ori_c[4], ori_c[5]}};
 }
-pair<array<Byte, 8>, array<Byte, 6>>
+inline pair<array<Byte, 8>, array<Byte, 6>>
 YrollCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
   auto [ori_v, ori_c] = ori;
   return {{ori_v[4], ori_v[0], ori_v[3], ori_v[7], ori_v[5], ori_v[1], ori_v[2],
            ori_v[6]},
           {ori_c[5], ori_c[4], ori_c[2], ori_c[3], ori_c[0], ori_c[1]}};
 }
-pair<array<Byte, 8>, array<Byte, 6>>
+inline pair<array<Byte, 8>, array<Byte, 6>>
 YrollCCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
   auto [ori_v, ori_c] = ori;
   return {{ori_v[1], ori_v[5], ori_v[6], ori_v[2], ori_v[0], ori_v[4], ori_v[7],
            ori_v[3]},
           {ori_c[4], ori_c[5], ori_c[2], ori_c[3], ori_c[1], ori_c[0]}};
 }
-pair<array<Byte, 8>, array<Byte, 6>>
+inline pair<array<Byte, 8>, array<Byte, 6>>
 XrollCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
   auto [ori_v, ori_c] = ori;
   return {{ori_v[3], ori_v[2], ori_v[6], ori_v[7], ori_v[0], ori_v[1], ori_v[5],
            ori_v[4]},
           {ori_c[0], ori_c[1], ori_c[4], ori_c[5], ori_c[3], ori_c[2]}};
 }
-pair<array<Byte, 8>, array<Byte, 6>>
+inline pair<array<Byte, 8>, array<Byte, 6>>
 XrollCCW(const pair<array<Byte, 8>, array<Byte, 6>> &ori) {
   auto [ori_v, ori_c] = ori;
-  return {{ori_v[1], ori_v[2], ori_v[3], ori_v[0], ori_v[5], ori_v[6], ori_v[7],
-           ori_v[4]},
+  return {{ori_v[4], ori_v[5], ori_v[1], ori_v[0], ori_v[7], ori_v[6], ori_v[2],
+           ori_v[3]},
           {ori_c[0], ori_c[1], ori_c[5], ori_c[4], ori_c[2], ori_c[3]}};
 }
 
@@ -207,12 +208,14 @@ FaceDir NbhCDir(array<Byte, 6> cell, Byte nbh) {
 }
 
 FaceDir OppositeFace(FaceDir f) {
+  assert(f != FaceDir::INVALID);
   FaceDir res;
   res = opposite_face[static_cast<unsigned int>(f)];
   return res;
 }
 
 array<FaceDir, 4> AdjFace(FaceDir f) {
+  assert(f != FaceDir::INVALID);
   auto _f = static_cast<unsigned int>(f);
   array<FaceDir, 4> res{adj_face[_f * 4 + 0], adj_face[_f * 4 + 1],
                         adj_face[_f * 4 + 2], adj_face[_f * 4 + 3]};
@@ -244,6 +247,7 @@ pair<bool, array<Byte, N>> IntersectEdge(array<Byte, 4> f1, array<Byte, 4> f2) {
 // c1 and c2 are neighbors, get corresponding pos in c2 of "pos" in c1
 FaceDir NbhCPosDir(Byte c1, array<Byte, 6> c1_c, array<Byte, 8> c1_v, Byte c2,
                    array<Byte, 6> c2_c, array<Byte, 8> c2_v, FaceDir pos) {
+  assert(pos != FaceDir::INVALID);
   FaceDir c2inc1 = NbhCDir(c1_c, c2);
   FaceDir c1inc2 = NbhCDir(c2_c, c1);
   for (int i = 0; i < 4; ++i) {
@@ -341,11 +345,11 @@ bool ReWriteModu(Byte st, FaceDir xf_dir, FaceDir yf_dir,
         mapping_c_o2n[next_c] = cnum++;
         auto next_c_nbhv = GetPartInLine<vector<Byte>, 8>(m_nbh_v, next_c);
         auto next_c_nbhc = GetPartInLine<vector<Byte>, 6>(m_nbh_c, next_c);
-        bfsqueue.push({next_c,
-                       NbhCPosDir(cur_c, cur_c_nbhc, cur_c_nbhv, next_c,
-                                  next_c_nbhc, next_c_nbhv, xfpos[i]),
-                       NbhCPosDir(cur_c, cur_c_nbhc, cur_c_nbhv, next_c,
-                                  next_c_nbhc, next_c_nbhv, yfpos[i])});
+        auto _xfpos_ = NbhCPosDir(cur_c, ndir_c, ndir_v, next_c, next_c_nbhc,
+                                  next_c_nbhv, xfpos[i]);
+        auto _yfpos_ = NbhCPosDir(cur_c, ndir_c, ndir_v, next_c, next_c_nbhc,
+                                  next_c_nbhv, yfpos[i]);
+        bfsqueue.push({next_c, _xfpos_, _yfpos_});
       }
       cur_nbh_c.push_back(mapping_c_o2n[next_c]);
     }
@@ -749,13 +753,15 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
   Byte base_cell_pos = (_it - surface.m_mapping_f.begin()) % 6;
   res.m_nbh_c[base_cell_num * 6 + base_cell_pos] = ncell;
   res.m_nbh_c[ncell * 6 + 5] = base_cell_num;
-  auto _tmpface =
-      FaceVertices(GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, base_cell_num),
-                   FaceDir(base_cell_pos));
-  res.m_nbh_v[ncell * 8 + 0] = _tmpface[3];
-  res.m_nbh_v[ncell * 8 + 1] = _tmpface[0];
-  res.m_nbh_v[ncell * 8 + 2] = _tmpface[1];
-  res.m_nbh_v[ncell * 8 + 3] = _tmpface[2];
+  {
+    auto _tmpface = FaceVertices(
+        GetPartInLine<decltype(m_nbh_v), 8>(m_nbh_v, base_cell_num),
+        FaceDir(base_cell_pos));
+    res.m_nbh_v[ncell * 8 + 0] = _tmpface[3];
+    res.m_nbh_v[ncell * 8 + 1] = _tmpface[0];
+    res.m_nbh_v[ncell * 8 + 2] = _tmpface[1];
+    res.m_nbh_v[ncell * 8 + 3] = _tmpface[2];
+  }
 
   auto adj_fs = AdjFace(FaceDir(base_cell_pos));
   for (int i = 0; i < 4; ++i) {
@@ -818,17 +824,18 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
   // sheet information update
   for (auto d : AdjFace(
            NbhCDir(GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-                   sfc.second[0]))) /*notice d here is dir in ncell, so to
+                   base_cell_num))) /*notice d here is dir in ncell, so to
                                        base_cell it's clockwise*/
   {
-    auto bc = sfc.second[0];
+    // auto bc = sfc.second[0];
     auto d_in_base = NbhCPosDir(
         ncell, GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-        GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, ncell), bc,
-        GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, bc),
-        GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, bc), d);
+        GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, ncell),
+        base_cell_num,
+        GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, base_cell_num),
+        GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, base_cell_num), d);
     res.m_cell_sheet[ncell * 6 + static_cast<Byte>(d)] =
-        m_cell_sheet[bc * 6 + static_cast<Byte>(d_in_base)];
+        m_cell_sheet[base_cell_num * 6 + static_cast<Byte>(d_in_base)];
   }
 
   // possibly new sheet and sheet merge
@@ -836,7 +843,7 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
   vector<Byte> sheet_tobe_merged;
   for (auto d : AdjFace(
            NbhCDir(GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-                   sfc.second[0]))) {
+                   base_cell_num))) {
     if (auto _nbhc = res.m_nbh_c[ncell * 6 + static_cast<Byte>(d)];
         _nbhc != -1) {
       auto d_in_nbhc = NbhCPosDir(
