@@ -32,20 +32,25 @@ void worker() {
     auto h = bfsqueue.Front();
     auto sf = h.Surface();
     bfsqueue.PopFront();
-    for (auto sfcs = h.EnumerateAllSFcase(sf); auto sfc : sfcs) {
-      if (auto p = h.AddHexAt(sf, sfc); p.first == true) {
-        bfsqueue.PushBack(p.second);
+    StoreSurface ssf(sf);
+    auto &db = finished.database;
+
+    if (db.find(ssf) != db.end() && db[ssf].data.count(StoreModu(h)) != 0) {
+      std::cout << cnt++ << std::endl;
+    } else {
+      for (auto sfcs = h.EnumerateAllSFcase(sf); auto sfc : sfcs) {
+        if (auto p = h.AddHexAt(sf, sfc); p.first == true) {
+          bfsqueue.PushBack(p.second);
+        }
       }
-    }
-    if (h.size() <= 3 || !h.HasHangedElement()) {
-      auto &db = finished.database;
-      StoreSurface ssf(sf);
-      if (db.find(ssf) == db.end()) {
-        db.insert({ssf, DataSet()});
+      if (h.size() <= 3 || !h.HasHangedElement()) {
+        if (db.find(ssf) == db.end()) {
+          db.insert({ssf, DataSet()});
+        }
+        db[ssf].data.insert(StoreModu(h));
       }
-      db[ssf].data.insert(StoreModu(h));
+      std::cout << cnt++ << std::endl;
     }
-    std::cout << cnt++ << std::endl;
   }
 }
 

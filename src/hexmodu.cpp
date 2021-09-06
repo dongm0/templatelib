@@ -285,7 +285,7 @@ bool ReWriteSurface(Byte st, Byte npos, vector<Byte> &cur_nbh_f,
         int n2opos =
             FindElementInLine(m_nbh_f.begin() + _next_f * 4,
                               m_nbh_f.begin() + _next_f * 4 + 4, cur_f) -
-            m_nbh_f.begin() + _next_f * 4;
+            (m_nbh_f.begin() + _next_f * 4);
         bfsqueue.push({_next_f, n2opos});
       }
       if (mapping_v[_nbh_v] == -1) {
@@ -446,7 +446,7 @@ HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir, Byte next_sf_dir) {
                               c2_nbhv, _cur_sf_dir);
     _cur_sf_dir = NbhCDir(c2_nbhc, _cur_c);
     _cur_c = next_c;
-    next_c = m_nbh_c[_cur_c * 6 + next_sf_dir];
+    next_c = m_nbh_c[_cur_c * 6 + static_cast<Byte>(_next_sf_dir)];
   }
   return make_tuple(_cur_c, static_cast<Byte>(_next_sf_dir),
                     static_cast<Byte>(_cur_sf_dir), valence);
@@ -558,7 +558,7 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
       int pos = FindElementInLine(sf.m_nbh_f.begin() + local_nbh_f[i] * 4,
                                   sf.m_nbh_f.begin() + local_nbh_f[i] * 4 + 4,
                                   sf_center) -
-                sf.m_nbh_f.begin() + local_nbh_f[i] * 4;
+                (sf.m_nbh_f.begin() + local_nbh_f[i] * 4);
       if (sf.m_nbh_f[local_nbh_f[i] * 4 + (pos + 3) % 4] !=
           local_nbh_f[(i + 1) % 4]) {
         corn_conn[i] = false;
@@ -569,7 +569,7 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
     auto _findpos = [&](Byte arg1, Byte arg2) {
       return FindElementInLine(sf.m_nbh_f.begin() + arg1 * 4,
                                sf.m_nbh_f.begin() + arg1 * 4 + 4, arg2) -
-             sf.m_nbh_f.begin() + arg1 * 4;
+             (sf.m_nbh_f.begin() + arg1 * 4);
     };
     auto _findvertex = [&](Byte f, Byte anchor, Byte pos) {
       return sf.m_nbh_f[f * 4 + (anchor + pos) % 4];
@@ -580,7 +580,7 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
 
     vector<pair<SFCase, vector<Byte>>> res;
     // logic here is very confusing,
-    // TODO:: explain logic in a markdown file
+    // explain logic in a markdown file
     auto checkSFCase = [&](int iter_time, SFCase sfcase,
                            const vector<Byte> &corn,
                            const vector<bool> &corn_val, vector<Byte> faces,
@@ -624,7 +624,10 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
         if (!pass) {
           continue;
         }
-        res.push_back({sfcase, faces});
+        vector<Byte> _tmp;
+        _tmp.push_back(sf_center);
+        _tmp.insert(_tmp.end(), faces.begin(), faces.end());
+        res.push_back({sfcase, _tmp});
       }
     };
 
@@ -799,7 +802,7 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
       auto _pos =
           FindElementInLine(surface.m_mapping_f.begin() + sf2 * 4,
                             surface.m_mapping_f.begin() + sf2 * 4 + 4, sf1) -
-          surface.m_mapping_f.begin() + sf2 * 4;
+          (surface.m_mapping_f.begin() + sf2 * 4);
       // notice the i+1 and i+2 here, vertice sequence of bottom face is 1 pos
       // ahead of FaceVerteice(ZB)
       res.m_nbh_v[ncell * 8 + 4 + (i + 1) % 4] =
