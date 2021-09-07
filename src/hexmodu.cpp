@@ -933,7 +933,7 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
         res.m_sheet[sheetid].first += 1;
       } else if (valence == 4) {
         res.m_sheet[sheetid].second += 1;
-      } else if (valence > 4) {
+      } else if (valence > 4 or valence < 2) {
         return {false, res};
       }
     }
