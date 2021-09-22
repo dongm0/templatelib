@@ -3,8 +3,11 @@
 
 #include "global_datatype.h"
 #include "hexmodu.hpp"
+#include <iostream>
 #include <unordered_map>
+#include <map>
 #include <unordered_set>
+#include <algorithm>
 
 class StoreSurface {
 public:
@@ -16,6 +19,31 @@ public:
   bool operator==(const StoreSurface &rhs) const {
     return nbh_c == rhs.nbh_c && nbh_v == rhs.nbh_v;
   }
+  bool operator<(const StoreSurface &rhs) const {
+    if (nbh_c.size() < rhs.nbh_c.size())
+      return true;
+    else if (nbh_c.size() > rhs.nbh_c.size())
+      return false;
+    if (nbh_c < rhs.nbh_c)
+      return true;
+    else if (nbh_c > rhs.nbh_c)
+      return false;
+    else if (nbh_v < rhs.nbh_v)
+      return true;
+    else
+      return false;
+  }
+  void Write(ostream &out) const {
+    out << nbh_c.size()/4 << " " << nbh_v.size()/4+2 << " ";
+    for (const auto &x : nbh_c) {
+      out << (int)x << " ";
+    }
+    for (const auto &x : nbh_v) {
+      out << (int)x << " ";
+    }
+    out << endl;
+    // return out;
+  }
 };
 
 class StoreModu {
@@ -26,6 +54,17 @@ public:
   StoreModu(const HexModu &modu) : nbh_c(modu.m_nbh_c), nbh_v(modu.m_nbh_v) {}
   bool operator==(const StoreModu &rhs) const {
     return nbh_v == rhs.nbh_v && nbh_c == rhs.nbh_c;
+  }
+  void Write(ostream &out) const {
+    out << nbh_c.size()/6 << " " << (*max_element(nbh_v.begin(), nbh_v.end()))+1 << " ";
+    for (const auto &x : nbh_c) {
+      out << (int)x << " ";
+    }
+    for (const auto &x : nbh_v) {
+      out << (int)x << " ";
+    }
+    out << endl;
+    // return out;
   }
 };
 
@@ -68,7 +107,8 @@ public:
 
 class DataBase {
 public:
-  unordered_map<StoreSurface, DataSet, SurfaceHash> database;
+  //unordered_map<StoreSurface, DataSet, SurfaceHash> database;
+  map<StoreSurface, DataSet> database;
 };
 
 #endif

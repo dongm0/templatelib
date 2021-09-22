@@ -2,6 +2,7 @@
 #include "global_datatype.h"
 #include "hexmodu.hpp"
 #include "quicklist.hpp"
+#include <fstream>
 #include <iostream>
 
 class moduhash_ {
@@ -23,6 +24,7 @@ public:
 
 void worker() {
   int cnt = 0;
+  int endnum = 6;
   DataBase finished;
 
   QuickList<HexModu, moduhash_> bfsqueue;
@@ -34,24 +36,52 @@ void worker() {
     bfsqueue.PopFront();
     StoreSurface ssf(sf);
     auto &db = finished.database;
+    cnt++;
 
     if (db.find(ssf) != db.end() && db[ssf].data.count(StoreModu(h)) != 0) {
-      std::cout << cnt++ << std::endl;
+      std::cout << cnt << std::endl;
     } else {
-      for (auto sfcs = h.EnumerateAllSFcase(sf); auto sfc : sfcs) {
-        if (auto p = h.AddHexAt(sf, sfc); p.first == true) {
-          bfsqueue.PushBack(p.second);
+      if (h.size() < endnum) {
+        for (auto sfcs = h.EnumerateAllSFcase(sf); auto sfc : sfcs) {
+          if (auto p = h.AddHexAt(sf, sfc); p.first == true) {
+            bfsqueue.PushBack(p.second);
+          }
         }
       }
-      if (h.size() <= 3 || !h.HasHangedElement()) {
+      if (h.size() <= 3 or !h.HasHangedElement()) {
         if (db.find(ssf) == db.end()) {
           db.insert({ssf, DataSet()});
         }
         db[ssf].data.insert(StoreModu(h));
       }
-      std::cout << cnt++ << std::endl;
+      if (cnt % 1000 == 0) {
+        std::cout << cnt << std::endl;
+      }
     }
   }
+  ofstream fout;
+  fout.open("datastore.dat");
+  fout << finished.database.size() << endl << endl;
+  int totalnum = 0;
+  for (const auto &x : finished.database) {
+    if (x.second.data.size() > 1) {
+
+      x.first.Write(fout);
+      totalnum += x.second.data.size();
+      fout << x.second.data.size() << endl;
+      for (const auto &y : x.second.data) {
+        y.Write(fout);
+      }
+      fout << endl;
+    }
+  }
+  cout << "total modu num: " << totalnum << endl;
+  fout.close();
 }
 
-int main() { worker(); }
+int main() { 
+    clock_t t1 = clock();
+    worker(); 
+    clock_t t2 = clock();
+    cout <<  "time: " << float(t2-t1)/float(CLOCKS_PER_SEC) << endl;
+}

@@ -144,7 +144,7 @@ RePosCell(pair<array<Byte, 8>, array<Byte, 6>> &&ori, FaceDir xf, FaceDir yf) {
     if (yf == FaceDir::XF) {
       return YrollCCW(YrollCCW(ZrollCCW(ori)));
     } else if (yf == FaceDir::ZB) {
-      return YrollCCW(XrollCW(ori));
+      return YrollCCW(XrollCCW(ori));
     } else if (yf == FaceDir::XB) {
       return ZrollCW(ori);
     } else if (yf == FaceDir::ZF) {
@@ -742,7 +742,7 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
   }
   vector<pair<SFCase, vector<Byte>>> res;
   for (auto &x : recording) {
-    res.push_back(std::move(x.second));
+    res.push_back(x.second);
   }
   return res;
 }
@@ -877,14 +877,16 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
   }
   res.m_cell_sheet[ncell * 6 + 4] = nsheet_num;
   res.m_cell_sheet[ncell * 6 + 5] = nsheet_num;
-  for (auto &x : res.m_cell_sheet) {
+  for (size_t i = 0; i < res.m_cell_sheet.size(); ++i) {
     if (FindElementInLine(sheet_tobe_merged.begin(), sheet_tobe_merged.end(),
-                          x) != sheet_tobe_merged.end()) {
-      x = nsheet_num;
+                          res.m_cell_sheet[i]) != sheet_tobe_merged.end()) {
+      res.m_cell_sheet[i] = nsheet_num;
     }
   }
 
   // delete merges sheets
+  sort(sheet_tobe_merged.begin(), sheet_tobe_merged.end());
+  reverse(sheet_tobe_merged.begin(), sheet_tobe_merged.end());
   for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
     int sheet_m1 = sheet_tobe_merged[i];
     int sheet = res.m_sheet.size() - 1 - i;
