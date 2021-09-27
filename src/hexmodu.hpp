@@ -49,7 +49,7 @@ private:
 
 private:
   tuple<Byte, Byte, Byte, Byte> GetAdjSurface_(Byte cur_c, Byte cur_sf_dir,
-                                               Byte next_sf_dir);
+                                               Byte next_sf_dir) const;
 
 public:
   HexModu()
@@ -64,12 +64,13 @@ public:
         m_size(rhs.m_size), m_size_v(rhs.m_size_v) {}
 
   void Regular();
-  ModuSurface Surface();
-  vector<pair<SFCase, vector<Byte>>> EnumerateAllSFcase(ModuSurface &cursf);
+  ModuSurface Surface() const;
+  vector<pair<SFCase, vector<Byte>>>
+  EnumerateAllSFcase(ModuSurface &cursf) const;
   pair<bool, HexModu> AddHexAt(const ModuSurface &surface,
-                               const pair<SFCase, vector<Byte>> &sfc);
+                               const pair<SFCase, vector<Byte>> &sfc) const;
 
-  bool HasHangedElement();
+  bool HasHangedElement() const;
 
   bool operator<(const HexModu &rhs) const;
   bool operator==(const HexModu &rhs) const;

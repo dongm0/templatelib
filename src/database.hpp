@@ -3,11 +3,11 @@
 
 #include "global_datatype.h"
 #include "hexmodu.hpp"
-#include <iostream>
-#include <unordered_map>
-#include <map>
-#include <unordered_set>
 #include <algorithm>
+#include <iostream>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 class StoreSurface {
 public:
@@ -34,7 +34,7 @@ public:
       return false;
   }
   void Write(ostream &out) const {
-    out << nbh_c.size()/4 << " " << nbh_v.size()/4+2 << " ";
+    out << nbh_c.size() / 4 << " " << nbh_v.size() / 4 + 2 << " ";
     for (const auto &x : nbh_c) {
       out << (int)x << " ";
     }
@@ -56,7 +56,8 @@ public:
     return nbh_v == rhs.nbh_v && nbh_c == rhs.nbh_c;
   }
   void Write(ostream &out) const {
-    out << nbh_c.size()/6 << " " << (*max_element(nbh_v.begin(), nbh_v.end()))+1 << " ";
+    out << nbh_c.size() / 6 << " "
+        << (*max_element(nbh_v.begin(), nbh_v.end())) + 1 << " ";
     for (const auto &x : nbh_c) {
       out << (int)x << " ";
     }
@@ -107,7 +108,6 @@ public:
 
 class DataBase {
 public:
-  //unordered_map<StoreSurface, DataSet, SurfaceHash> database;
   map<StoreSurface, DataSet> database;
 };
 

@@ -431,7 +431,7 @@ void HexModu::Regular() {
 }
 
 tuple<Byte, Byte, Byte, Byte>
-HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir, Byte next_sf_dir) {
+HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir, Byte next_sf_dir) const {
   auto _cur_c = cur_c;
   auto _cur_sf_dir = FaceDir(cur_sf_dir), _next_sf_dir = FaceDir(next_sf_dir);
   auto next_c = m_nbh_c[cur_c * 6 + next_sf_dir];
@@ -454,7 +454,7 @@ HexModu::GetAdjSurface_(Byte cur_c, Byte cur_sf_dir, Byte next_sf_dir) {
                     static_cast<Byte>(_cur_sf_dir), valence);
 }
 
-ModuSurface HexModu::Surface() {
+ModuSurface HexModu::Surface() const{
   vector<Byte> surface_f;
   vector<Byte> surface_v;
 
@@ -516,7 +516,7 @@ ModuSurface HexModu::Surface() {
 }
 
 vector<pair<SFCase, vector<Byte>>>
-HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
+HexModu::EnumerateAllSFcase(ModuSurface &cursf) const{
   ModuSurface sf = cursf;
   if (cursf.m_size_f == 0) {
     sf = Surface();
@@ -628,7 +628,24 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
     };
 
     // F1
-    res.push_back({SFCase::F1, {sf_center}});
+    if (size() <= 3) {
+      res.push_back({SFCase::F1, {sf_center}});
+    } else {
+      // surface of adjfaces in 'c', check whether equal to surface adjface of
+      // sf_center
+      array<Byte, 4> _tmp;
+      for (int i = 0; i < 4; ++i) {
+        auto d = AdjFace(FaceDir(pos_in_c))[i];
+        _tmp[i] = sf.m_mapping_f.at(c * 6 + (Byte)d);
+      }
+      sort(_tmp.begin(), _tmp.end());
+
+      auto _tmp2 = GetPartInLine<vector<Byte>, 4>(sf.m_nbh_f, sf_center);
+      sort(_tmp2.begin(), _tmp2.end());
+      if (_tmp != _tmp2) {
+        res.push_back({SFCase::F1, {sf_center}});
+      }
+    }
     // F2
     checkSFCase(4, SFCase::F2, {0, 1}, {true, true}, {0},
                 {{0, 3, 1, 3}, {0, 2, 1, 2}, {0, 3, 1, 2}, {0, 2, 1, 3}});
@@ -748,7 +765,7 @@ HexModu::EnumerateAllSFcase(ModuSurface &cursf) {
 }
 
 pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
-                                      const pair<SFCase, vector<Byte>> &sfc) {
+                                      const pair<SFCase, vector<Byte>> &sfc) const {
   HexModu res(*this);
   int vnum = surface.m_mapping_v.size();
   res.m_size += 1;
@@ -935,7 +952,7 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
         res.m_sheet[sheetid].first += 1;
       } else if (valence == 4) {
         res.m_sheet[sheetid].second += 1;
-      } else if (valence > 4 or valence < 2) {
+      } else if (valence > 4 || valence < 2) {
         return {false, res};
       }
     }
@@ -955,7 +972,7 @@ pair<bool, HexModu> HexModu::AddHexAt(const ModuSurface &surface,
   return {true, res};
 }
 
-bool HexModu::HasHangedElement() {
+bool HexModu::HasHangedElement() const {
   for (int i = 0; i < m_size; ++i) {
     int r = 0;
     for (int j = 0; j < 3; ++j) {
