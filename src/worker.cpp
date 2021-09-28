@@ -134,7 +134,7 @@ void parallel_worker(int n, int max_n, const vector<HexModu> &modus) {
           }
         }
       }
-      // parallel is okay but meaningless?
+      // parallel is not useless, surface calculation is time_consuming!
       
       if (cur_modu.size() <= 3 || !cur_modu.HasHangedElement()) {
         if (db.find(ssf) == db.end()) {
@@ -147,8 +147,6 @@ void parallel_worker(int n, int max_n, const vector<HexModu> &modus) {
           db[ssf].data.insert(StoreModu(cur_modu));
           mtx_data.unlock();
         }
-        //if ((++cnt) % 1000 == 0)
-        //  std::cout << cnt << std::endl;
       }
     }
   }
@@ -165,7 +163,7 @@ void bfs_worker() {
       cur_modus.push_back(m);
     }
     targetlist.Clear();
-    const int threadnum = 10;
+    const int threadnum = 8;
     std::vector<std::thread> threads(threadnum);
     for (int i = 0; i < threadnum; ++i) {
       threads[i] =
@@ -174,40 +172,6 @@ void bfs_worker() {
     for (int i = 0; i < threadnum; ++i) {
       threads[i].join();
     }
-    /*
-    while (!(*bfsqueue).Empty()) {
-      auto h = (*bfsqueue).Front();
-      auto sf = h.Surface();
-      (*bfsqueue).PopFront();
-      StoreSurface ssf(sf);
-      auto &db = finished.database;
-
-      if (db.find(ssf) != db.end() && db[ssf].data.count(StoreModu(h)) != 0) {
-        // std::cout << cnt << std::endl;
-      } else if (ssf.nbh_c.size() / 4 > maxfacepernum[h.size()]) {
-        // std::cout << cnt << std::endl;
-      } else {
-        if (i < endnum - 1) {
-            auto sfcs = h.EnumerateAllSFcase(sf);
-          for ( auto sfc : sfcs) {
-            if (auto p = h.AddHexAt(sf, sfc); p.first == true) {
-              (*nextbfsqueue).PushBack(p.second);
-            }
-          }
-        }
-        if (h.size() <= 3 || !h.HasHangedElement()) {
-          if (db.find(ssf) == db.end()) {
-            db.insert({ssf, DataSet()});
-          }
-          db[ssf].data.insert(StoreModu(h));
-          if ((++cnt) % 1000 == 0)
-            std::cout << cnt << std::endl;
-        }
-      }
-    }
-    swap(bfsqueue, nextbfsqueue);
-    nextbfsqueue->Clear();
-    */
   }
 
   // output
@@ -216,13 +180,15 @@ void bfs_worker() {
   fout << finished.database.size() << endl << endl;
   int totalnum = 0;
   for (const auto &x : finished.database) {
-    x.first.Write(fout);
     totalnum += x.second.data.size();
-    fout << x.second.data.size() << endl;
-    for (const auto &y : x.second.data) {
-      y.Write(fout);
+    if (x.second.data.size() > 1) {
+      x.first.Write(fout);
+      fout << x.second.data.size() << endl;
+      for (const auto &y : x.second.data) {
+        y.Write(fout);
+      }
+      fout << endl;
     }
-    fout << endl;
   }
   cout << "total modu num: " << totalnum << endl;
   fout.close();
