@@ -76,6 +76,24 @@ public:
   bool operator==(const HexModu &rhs) const;
   // bool operator==(const HexModu &rhs);
   size_t size() const { return m_size; }
+
+  // boss's logic
+  vector<pair<int, bool>> checkVerticeValence(const ModuSurface &sf) {
+    vector<pair<int, bool>> res;
+    for (int i = 0; i < m_size_v; ++i) {
+      bool issf = (sf.m_mapping_v[i] != -1);
+      int cnt = 0;
+      for (int j = 0; j < m_size; ++j) {
+        if (find(m_nbh_v.begin() + j * 8, m_nbh_v.begin() + j * 8 + 8, i) -
+                m_nbh_v.begin() + j * 8 <
+            8) {
+          cnt++;
+        }
+      }
+      res.push_back(make_pair(issf, cnt));
+    }
+    return res;
+  }
 };
 
 #endif

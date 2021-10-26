@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -52,6 +54,7 @@ public:
   vector<Byte> nbh_v;
 
   StoreModu(const HexModu &modu) : nbh_c(modu.m_nbh_c), nbh_v(modu.m_nbh_v) {}
+  StoreModu(const vector<Byte> &c1, const vector<Byte> &v1) : nbh_c(c1), nbh_v(v1) {}
   bool operator==(const StoreModu &rhs) const {
     return nbh_v == rhs.nbh_v && nbh_c == rhs.nbh_c;
   }
@@ -103,12 +106,16 @@ struct ModuHash {
 
 class DataSet {
 public:
-  unordered_set<StoreModu, ModuHash> data;
+  // unordered_set<StoreModu, ModuHash> data;
+  vector<StoreModu> data;
+  std::mutex mtx;
+  DataSet() {}
 };
 
 class DataBase {
 public:
-  map<StoreSurface, DataSet> database;
+  unordered_map<StoreSurface, DataSet, SurfaceHash> database;
+  // map<StoreSurface, DataSet> database;
 };
 
 #endif
