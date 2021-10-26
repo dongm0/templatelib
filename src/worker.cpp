@@ -176,20 +176,7 @@ void parallel_worker(int n, int max_n, const vector<HexModu> &modus) {
         for (auto sfc : sfcs) {
           if (auto p = cur_modu.AddHexAt(sf, sfc); p.first == true) {
             lock_guard<mutex> guard1(mtx);
-            targetlist.PushBack(p.second);
-            
-          //  if (StoreModu(p.second) == mmm_final) {
-          //    auto _tmp = StoreModu(cur_modu);
-          //    cout << "{";
-          //    for (auto x : _tmp.nbh_c)
-          //      cout << (int)x << ",";
-          //    cout << "}" << endl << "{";
-          //    for (auto x : _tmp.nbh_v)
-          //      cout << (int)x << ",";
-          //    cout << "}" << endl;
-          //    system("pause");
-          //  }
-            
+            targetlist.PushBack(p.second);            
           }
         }
       }

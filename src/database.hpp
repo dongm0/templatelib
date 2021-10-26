@@ -114,7 +114,7 @@ public:
 
 class DataBase {
 public:
-  unordered_map<StoreSurface, DataSet, SurfaceHash> database;
+  map<StoreSurface, DataSet, SurfaceHash> database;
   // map<StoreSurface, DataSet> database;
 };
 
