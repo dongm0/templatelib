@@ -526,7 +526,7 @@ ModuSurface HexModu::Surface() const {
 }
 
 vector<pair<SFCase, vector<Byte>>>
-HexModu::EnumerateAllSFcase(ModuSurface &cursf) const {
+HexModu::EnumerateAllSFcase(const ModuSurface &cursf) const {
   ModuSurface sf = cursf;
   if (cursf.m_size_f == 0) {
     sf = Surface();
@@ -781,7 +781,7 @@ HexModu::AddHexAt(const ModuSurface &surface,
                   sfc.second[0]);
   Byte base_cell_num = (_it - surface.m_mapping_f.begin()) / 6;
   if (base_cell_num < 0 || base_cell_num >= surface.m_mapping_f.size()) {
-      system("pause");
+    system("pause");
   }
   Byte base_cell_pos = (_it - surface.m_mapping_f.begin()) % 6;
   res.m_nbh_c[base_cell_num * 6 + base_cell_pos] = ncell;
@@ -1005,4 +1005,16 @@ bool HexModu::operator<(const HexModu &rhs) const {
 
 bool HexModu::operator==(const HexModu &rhs) const {
   return m_nbh_c == rhs.m_nbh_c && m_nbh_v == rhs.m_nbh_v;
+}
+
+int HexModu::getSingOffsetForSf() const {
+  float res = 6 * pow(size(), 0.66666666666666667);
+  for (auto x : m_sheet) {
+    // for each v3 edge, surface face should be 0.75 lower
+    res -= x.first * 0.75;
+    // for each v5 edge, surface face should be 1 lower
+    res += x.second * 1;
+  }
+  res += 0.000000001;
+  return std::round(res);
 }

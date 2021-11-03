@@ -66,7 +66,7 @@ public:
   void Regular();
   ModuSurface Surface() const;
   vector<pair<SFCase, vector<Byte>>>
-  EnumerateAllSFcase(ModuSurface &cursf) const;
+  EnumerateAllSFcase(const ModuSurface &cursf) const;
   pair<bool, HexModu> AddHexAt(const ModuSurface &surface,
                                const pair<SFCase, vector<Byte>> &sfc) const;
 
@@ -76,9 +76,10 @@ public:
   bool operator==(const HexModu &rhs) const;
   // bool operator==(const HexModu &rhs);
   size_t size() const { return m_size; }
+  int getSingOffsetForSf() const;
 
   // boss's logic
-  vector<pair<int, bool>> checkVerticeValence(const ModuSurface &sf) {
+  vector<pair<int, bool>> checkVerticeValence(const ModuSurface &sf) const {
     vector<pair<int, bool>> res;
     for (int i = 0; i < m_size_v; ++i) {
       bool issf = (sf.m_mapping_v[i] != -1);

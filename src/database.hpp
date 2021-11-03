@@ -54,7 +54,8 @@ public:
   vector<Byte> nbh_v;
 
   StoreModu(const HexModu &modu) : nbh_c(modu.m_nbh_c), nbh_v(modu.m_nbh_v) {}
-  StoreModu(const vector<Byte> &c1, const vector<Byte> &v1) : nbh_c(c1), nbh_v(v1) {}
+  StoreModu(const vector<Byte> &c1, const vector<Byte> &v1)
+      : nbh_c(c1), nbh_v(v1) {}
   bool operator==(const StoreModu &rhs) const {
     return nbh_v == rhs.nbh_v && nbh_c == rhs.nbh_c;
   }
@@ -114,8 +115,9 @@ public:
 
 class DataBase {
 public:
-  map<StoreSurface, DataSet, SurfaceHash> database;
+  // map<StoreSurface, DataSet, SurfaceHash> database;
   // map<StoreSurface, DataSet> database;
+  unordered_set<StoreModu, ModuHash> database;
 };
 
 #endif
