@@ -16,6 +16,7 @@ public:
   vector<Byte> nbh_c;
   vector<Byte> nbh_v;
 
+  StoreSurface() {}
   StoreSurface(const ModuSurface &surface)
       : nbh_c(surface.m_nbh_f), nbh_v(surface.m_nbh_v) {}
   bool operator==(const StoreSurface &rhs) const {
@@ -36,15 +37,25 @@ public:
       return false;
   }
   void Write(ostream &out) const {
-    out << nbh_c.size() / 4 << " " << nbh_v.size() / 4 + 2 << " ";
+    out << nbh_c.size() / 4 << " " << nbh_v.size() / 4 + 2 << " \n";
     for (const auto &x : nbh_c) {
       out << (int)x << " ";
     }
+    out << endl;
     for (const auto &x : nbh_v) {
       out << (int)x << " ";
     }
     out << endl;
     // return out;
+  }
+
+  ModuSurface getEntireSurface() {
+    ModuSurface res;
+    res.m_nbh_f = nbh_c;
+    res.m_nbh_v = nbh_v;
+    res.m_size_f = nbh_c.size() / 4;
+    res.m_size_v = *std::max_element(nbh_v.begin(), nbh_v.end()) + 1;
+    return res;
   }
 };
 
@@ -53,6 +64,7 @@ public:
   vector<Byte> nbh_c;
   vector<Byte> nbh_v;
 
+  StoreModu() {}
   StoreModu(const HexModu &modu) : nbh_c(modu.m_nbh_c), nbh_v(modu.m_nbh_v) {}
   StoreModu(const vector<Byte> &c1, const vector<Byte> &v1)
       : nbh_c(c1), nbh_v(v1) {}

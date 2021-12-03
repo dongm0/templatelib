@@ -1015,6 +1015,6 @@ int HexModu::getSingOffsetForSf() const {
     // for each v5 edge, surface face should be 1 lower
     res += x.second * 1;
   }
-  res += 0.000000001;
+  res += 2.0000001;
   return std::round(res);
 }

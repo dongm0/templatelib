@@ -27,7 +27,8 @@ public:
     return seed;
   }
 };
-int endnum = 18;
+int endnum = 17;
+int cur_cnum = 0;
 
 std::mutex mtx_queue;
 std::mutex mtx_database;
@@ -97,12 +98,14 @@ void parallel_worker(int n, int max_n,
       }
     }
   }
-}
+ }
 
 void bfs_worker() {
   HexModu cube;
   targetlist.insert(make_pair(cube, cube.Surface()));
   for (int i = 0; i < endnum; ++i) {
+    clock_t t1 = clock();
+    cur_cnum = i;
     vector<pair<HexModu, ModuSurface>> cur_modus;
     cur_modus.reserve(targetlist.size());
     cur_modus.assign(move_iterator(targetlist.begin()),
@@ -110,18 +113,22 @@ void bfs_worker() {
     targetlist.clear();
     const int threadnum = 8;
     std::vector<std::thread> threads(threadnum);
-    for (int i = 0; i < threadnum; ++i) {
-      threads[i] = std::thread(parallel_worker, i, threadnum, cur_modus);
+    for (int _i = 0; _i < threadnum; ++_i) {
+      threads[_i] = std::thread(parallel_worker, _i, threadnum, cur_modus);
     }
-    for (int i = 0; i < threadnum; ++i) {
-      threads[i].join();
+    for (int _i = 0; _i < threadnum; ++_i) {
+      threads[_i].join();
     }
+    storesf.shrink_to_fit();
+    clock_t t2 = clock();
+    std::cout << "cellnum: " << i+1 << "\t using time: ";
+    std::cout << (t2 - t1) / CLOCKS_PER_SEC << std::endl;
   }
-  std::multimap<StoreSurface, size_t> uniqueset;
+  //std::multimap<StoreSurface, size_t> uniqueset;
 
-  for (int i = 0; i < storesf.size(); ++i) {
-    uniqueset.insert(make_pair(storesf[i], i));
-  }
+  //for (int i = 0; i < storesf.size(); ++i) {
+  //  uniqueset.insert(make_pair(storesf[i], i));
+  //}
 
   // output
   ofstream fout;
