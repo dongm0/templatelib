@@ -8,7 +8,7 @@
 
 struct {
   unordered_map<StoreSurface, vector<uint64_t>, SurfaceHash> index;
-  //map<StoreSurface, vector<uint64_t>> index;
+  // map<StoreSurface, vector<uint64_t>> index;
   vector<StoreModu> data;
 } DataStore;
 
@@ -23,7 +23,7 @@ struct meshLocal {
 
 template <typename T> void readBin(std::istream &in, T *data, size_t len = 1) {
   int size = sizeof(T) / sizeof(char);
-  in.read((char*)data, size * len);
+  in.read((char *)data, size * len);
 }
 
 template <typename T>
@@ -149,7 +149,6 @@ void worker_trans_ascii2bin() {
   writeDataBin("datastore_bin_withsingle.dat");
 }
 
-
 bool readssf(std::string filename, StoreSurface &ssf) {
   ssf.nbh_c.clear();
   ssf.nbh_v.clear();
@@ -173,7 +172,6 @@ bool readssf(std::string filename, StoreSurface &ssf) {
   }
   return true;
 }
-
 
 int main() {
   StoreSurface ssf;
@@ -201,7 +199,7 @@ int main() {
         cout << (DataStore.index.count(ssf1) != 0 ? DataStore.index[ssf1].size()
                                                   : 0)
              << endl;
-        if (b == 0 and DataStore.index.count(ssf1) != 0) {
+        if (b == 0 && DataStore.index.count(ssf1) != 0) {
           b = 1;
           auto modu = DataStore.data.at(DataStore.index[ssf1][0]);
           modu.Write(cout);

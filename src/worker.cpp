@@ -98,7 +98,7 @@ void parallel_worker(int n, int max_n,
       }
     }
   }
- }
+}
 
 void bfs_worker() {
   HexModu cube;
@@ -121,14 +121,9 @@ void bfs_worker() {
     }
     storesf.shrink_to_fit();
     clock_t t2 = clock();
-    std::cout << "cellnum: " << i+1 << "\t using time: ";
+    std::cout << "cellnum: " << i + 1 << "\t using time: ";
     std::cout << (t2 - t1) / CLOCKS_PER_SEC << std::endl;
   }
-  //std::multimap<StoreSurface, size_t> uniqueset;
-
-  //for (int i = 0; i < storesf.size(); ++i) {
-  //  uniqueset.insert(make_pair(storesf[i], i));
-  //}
 
   // output
   ofstream fout;
