@@ -45,12 +45,16 @@ void parallel_worker(int n, int max_n,
     int cnum = cur_modu.size();
     const auto &sf = modus[i].second;
     StoreSurface ssf(sf);
-    auto ideal_surface_fnum = cur_modu.getSingOffsetForSf();
+    auto ideal_surface_fnum = 30; // cur_modu.getSingOffsetForSf();
 
-    if (cur_modu.size() > 5 && ssf.nbh_c.size() / 4 > ideal_surface_fnum) {
+    // if (cur_modu.size() > 5 && ssf.nbh_c.size() / 4 > ideal_surface_fnum) {
+    //  continue;
+    //}
+    if (ssf.nbh_c.size() / 4 > ideal_surface_fnum) {
       continue;
     }
 
+    /*
     bool valenceCheck = [&]() -> bool {
       auto _res = cur_modu.checkVerticeValence(sf);
       for (auto p : _res) {
@@ -62,7 +66,7 @@ void parallel_worker(int n, int max_n,
     }();
     if (!valenceCheck)
       continue;
-
+    */
     if (cnum < endnum) {
       auto sfcs = cur_modu.EnumerateAllSFcase(sf);
       for (auto sfc : sfcs) {
@@ -78,8 +82,11 @@ void parallel_worker(int n, int max_n,
           continue;
         auto newsf = p.second.Surface();
         auto newssf = StoreSurface(newsf);
-        if (int fnum_upper = p.second.getSingOffsetForSf();
-            p.second.size() > 5 && newssf.nbh_c.size() / 4 > fnum_upper) {
+        // if (int fnum_upper = p.second.getSingOffsetForSf();
+        //    p.second.size() > 5 && newssf.nbh_c.size() / 4 > fnum_upper) {
+        //  continue;
+        //}
+        if (newssf.nbh_c.size() / 4 > ideal_surface_fnum) {
           continue;
         }
         {
@@ -89,14 +96,14 @@ void parallel_worker(int n, int max_n,
       }
     }
 
-    if (cur_modu.size() <= 3 || !cur_modu.HasHangedElement()) {
-      StoreModu smodu(cur_modu);
-      {
-        lock_guard<mutex> guard_db(mtx_database);
-        store.push_back(smodu);
-        storesf.push_back(ssf);
-      }
+    // if (cur_modu.size() <= 3 || !cur_modu.HasHangedElement()) {
+    StoreModu smodu(cur_modu);
+    {
+      lock_guard<mutex> guard_db(mtx_database);
+      store.push_back(smodu);
+      storesf.push_back(ssf);
     }
+    //}
   }
 }
 

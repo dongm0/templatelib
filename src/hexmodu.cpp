@@ -302,16 +302,13 @@ bool ReWriteSurface(Byte st, Byte npos, vector<Byte> &cur_nbh_f,
 
 bool ReWriteModu(Byte st, int _vnum, int _cnum, FaceDir xf_dir, FaceDir yf_dir,
                  vector<Byte> &cur_nbh_v, vector<Byte> &cur_nbh_c,
-                 vector<Byte> &cur_cell_sheet, const vector<Byte> &m_nbh_v,
-                 const vector<Byte> &m_nbh_c, const vector<Byte> &m_cell_sheet,
-                 const vector<Byte> &best_nbh_v, const vector<Byte> &best_nbh_c,
-                 const vector<Byte> &best_cell_sheet) {
+                 const vector<Byte> &m_nbh_v, const vector<Byte> &m_nbh_c,
+                 const vector<Byte> &best_nbh_v,
+                 const vector<Byte> &best_nbh_c) {
   cur_nbh_c.clear();
   cur_nbh_v.clear();
-  cur_cell_sheet.clear();
   cur_nbh_c.reserve(m_nbh_c.size());
   cur_nbh_v.reserve(m_nbh_v.size());
-  cur_cell_sheet.reserve(m_cell_sheet.size());
   vector<Byte> mapping_v_o2n(_vnum, -1);
   vector<Byte> mapping_c_o2n(_cnum, -1);
   queue<tuple<Byte, FaceDir, FaceDir>> bfsqueue;
@@ -343,7 +340,6 @@ bool ReWriteModu(Byte st, int _vnum, int _cnum, FaceDir xf_dir, FaceDir yf_dir,
       yfpos[i] = AdjFace(FaceDir(i))[1];
     for (int i = 0; i < 6; ++i) {
       auto next_c = ndir_c[i];
-      cur_cell_sheet.push_back(m_cell_sheet[cur_c * 6 + ndir[i]]);
       if (next_c == -1) {
         cur_nbh_c.push_back(-1);
       } else {
@@ -417,27 +413,22 @@ void ModuSurface::Regular() {
 void HexModu::Regular() {
   vector<Byte> cur_nbh_v(m_nbh_v);
   vector<Byte> cur_nbh_c(m_nbh_c);
-  vector<Byte> cur_cell_sheet(m_cell_sheet);
   vector<Byte> best_nbh_v(m_nbh_v);
   vector<Byte> best_nbh_c(m_nbh_c);
-  vector<Byte> best_cell_sheet(m_cell_sheet);
   for (size_t i = 0; i < m_size; ++i) {
     for (size_t posf = 0; posf < 6; ++posf) {
       for (size_t posd = 0; posd < 4; ++posd) {
         if (ReWriteModu(i, m_size_v, m_size, FaceDir(posf),
                         AdjFace(FaceDir(posf))[posd], cur_nbh_v, cur_nbh_c,
-                        cur_cell_sheet, m_nbh_v, m_nbh_c, m_cell_sheet,
-                        best_nbh_v, best_nbh_c, best_cell_sheet)) {
+                        m_nbh_v, m_nbh_c, best_nbh_v, best_nbh_c)) {
           best_nbh_v.swap(cur_nbh_v);
           best_nbh_c.swap(cur_nbh_c);
-          best_cell_sheet.swap(cur_cell_sheet);
         }
       }
     }
   }
   m_nbh_v.swap(best_nbh_v);
   m_nbh_c.swap(best_nbh_c);
-  m_cell_sheet.swap(best_cell_sheet);
 }
 
 tuple<Byte, Byte, Byte, Byte>
@@ -637,39 +628,7 @@ HexModu::EnumerateAllSFcase(const ModuSurface &cursf) const {
     };
 
     // F1
-    if (size() <= 5) {
-      res.push_back({SFCase::F1, {sf_center}});
-    } else {
-      // surface of adjfaces in 'c', check whether equal to surface adjface of
-      // sf_center
-
-#define JF_LOGIC
-#ifndef JF_LOGIC
-      array<Byte, 4> _tmp;
-      for (int i = 0; i < 4; ++i) {
-        auto d = AdjFace(FaceDir(pos_in_c))[i];
-        _tmp[i] = sf.m_mapping_f.at(c * 6 + (Byte)d);
-      }
-      sort(_tmp.begin(), _tmp.end());
-
-      auto _tmp2 = GetPartInLine<vector<Byte>, 4>(sf.m_nbh_f, sf_center);
-      sort(_tmp2.begin(), _tmp2.end());
-      if (_tmp != _tmp2) {
-        res.push_back({SFCase::F1, {sf_center}});
-      }
-
-#else
-      int cnt = 0;
-      for (int i = 0; i < 6; ++i) {
-        if (m_nbh_c[c * 6 + i] == -1) {
-          cnt++;
-        }
-      }
-      if (cnt < 5) {
-        res.push_back(make_pair(SFCase::F1, vector<Byte>{sf_center}));
-      }
-#endif
-    }
+    res.push_back({SFCase::F1, {sf_center}});
     // F2
     checkSFCase(4, SFCase::F2, {0, 1}, {true, true}, {0},
                 {{0, 3, 1, 3}, {0, 2, 1, 2}, {0, 3, 1, 2}, {0, 2, 1, 3}});
@@ -746,14 +705,8 @@ HexModu::EnumerateAllSFcase(const ModuSurface &cursf) const {
           auto next_sf = sf.m_mapping_f[next_c * 6 + next_sf_dir];
           bool close =
               (find(tmpset.begin(), tmpset.end(), next_sf) != tmpset.end());
-          if (!close) {
-            if (valence >= 4) {
-              return false;
-            }
-          } else {
-            if (valence <= 1 || valence > 4) {
-              return false;
-            }
+          if (close && valence <= 1) {
+            return false;
           }
         }
       }
@@ -775,7 +728,6 @@ HexModu::AddHexAt(const ModuSurface &surface,
   Byte ncell = res.m_size - 1;
   res.m_nbh_c.insert(res.m_nbh_c.end(), {-1, -1, -1, -1, -1, -1});
   res.m_nbh_v.insert(res.m_nbh_v.end(), {-1, -1, -1, -1, -1, -1, -1, -1});
-  res.m_cell_sheet.insert(res.m_cell_sheet.end(), {-1, -1, -1, -1, -1, -1});
 
   auto _it = find(surface.m_mapping_f.begin(), surface.m_mapping_f.end(),
                   sfc.second[0]);
@@ -803,16 +755,6 @@ HexModu::AddHexAt(const ModuSurface &surface,
     if (find(sfc.second.begin(), sfc.second.end(),
              surface.m_mapping_f[next_c * 6 + next_sf_pos]) !=
         sfc.second.end()) {
-      // dealt with valence
-      int sheetid = res.m_cell_sheet[base_cell_num * 6 +
-                                     static_cast<Byte>(adj_fs[(i + 1) % 4])];
-      if (local_valence == 2) {
-        res.m_sheet[sheetid].first += 1;
-      } else if (local_valence == 4) {
-        res.m_sheet[sheetid].second += 1;
-      } else if (local_valence > 4) {
-        return {false, res};
-      }
 
       assert(res.m_nbh_c[next_c * 6 + next_sf_pos] == -1);
       res.m_nbh_c[next_c * 6 + next_sf_pos] = ncell;
@@ -852,125 +794,6 @@ HexModu::AddHexAt(const ModuSurface &surface,
   }
   res.m_size_v = vnum;
 
-  // sheet information update
-  for (auto d : AdjFace(
-           NbhCDir(GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-                   base_cell_num))) /*notice d here is dir in ncell, so to
-                                       base_cell it's clockwise*/
-  {
-    auto d_in_base = NbhCPosDir(
-        ncell, GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-        GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, ncell),
-        base_cell_num,
-        GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, base_cell_num),
-        GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, base_cell_num), d);
-    res.m_cell_sheet[ncell * 6 + static_cast<Byte>(d)] =
-        m_cell_sheet[base_cell_num * 6 + static_cast<Byte>(d_in_base)];
-  }
-
-  // possibly new sheet and sheet merge
-  Byte nsheet_num = m_sheet.size();
-  vector<Byte> sheet_tobe_merged;
-  for (auto d : AdjFace(
-           NbhCDir(GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-                   base_cell_num))) {
-    if (auto _nbhc = res.m_nbh_c[ncell * 6 + static_cast<Byte>(d)];
-        _nbhc != -1) {
-      auto d_in_nbhc = NbhCPosDir(
-          ncell, GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, ncell),
-          GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, ncell), _nbhc,
-          GetPartInLine<decltype(res.m_nbh_c), 6>(res.m_nbh_c, _nbhc),
-          GetPartInLine<decltype(res.m_nbh_v), 8>(res.m_nbh_v, _nbhc),
-          FaceDir(4));
-      Byte sheet = m_cell_sheet[_nbhc * 6 + static_cast<Byte>(d_in_nbhc)];
-      if (sheet > nsheet_num) {
-        if (find(sheet_tobe_merged.begin(), sheet_tobe_merged.end(), sheet) ==
-            sheet_tobe_merged.end()) {
-          sheet_tobe_merged.push_back(sheet);
-        }
-      } else {
-        nsheet_num = sheet;
-      }
-    }
-  }
-  if (nsheet_num == m_sheet.size()) {
-    // add new sheet
-    res.m_sheet.push_back({0, 0});
-  }
-  res.m_cell_sheet[ncell * 6 + 4] = nsheet_num;
-  res.m_cell_sheet[ncell * 6 + 5] = nsheet_num;
-  for (size_t i = 0; i < res.m_cell_sheet.size(); ++i) {
-    if (find(sheet_tobe_merged.begin(), sheet_tobe_merged.end(),
-             res.m_cell_sheet[i]) != sheet_tobe_merged.end()) {
-      res.m_cell_sheet[i] = nsheet_num;
-    }
-  }
-
-  // delete merges sheets
-  sort(sheet_tobe_merged.begin(), sheet_tobe_merged.end());
-  reverse(sheet_tobe_merged.begin(), sheet_tobe_merged.end());
-  for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
-    int sheet_m1 = sheet_tobe_merged[i];
-    int sheet = res.m_sheet.size() - 1 - i;
-    for (auto &x : res.m_cell_sheet) {
-      if (x == sheet)
-        x = sheet_m1;
-    }
-    swap(res.m_sheet[sheet_m1], res.m_sheet[sheet]);
-  }
-  for (int i = 0; i < sheet_tobe_merged.size(); ++i) {
-    res.m_sheet.pop_back();
-  }
-
-  array<Byte, 4> _nbhcs = [&]() {
-    array<Byte, 4> _r;
-    auto base_dir = NbhCDir(GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, ncell),
-                            base_cell_num);
-    for (int i = 0; i < 4; ++i) {
-      auto _local_dir = AdjFace(FaceDir(base_dir))[i];
-      _r[i] = res.m_nbh_c[ncell * 6 + static_cast<Byte>(_local_dir)];
-    }
-    return _r;
-  }();
-  for (int i = 0; i < 4; ++i) {
-    // the AdjFace sequence of base_cell and ncell (clockwise or ccw) here
-    // doesn't matter, both are okay
-    if (_nbhcs[i] != -1 && _nbhcs[(i + 1) % 4] != -1) {
-      auto _nbhcs_i_next_pos = NbhCPosDir(
-          ncell, GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, ncell),
-          GetPartInLine<vector<Byte>, 8>(res.m_nbh_v, ncell), _nbhcs[i],
-          GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, _nbhcs[i]),
-          GetPartInLine<vector<Byte>, 8>(res.m_nbh_v, _nbhcs[i]),
-          NbhCDir(GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, ncell),
-                  _nbhcs[(i + 1) % 4]) /*pos of i+1 in ncell*/);
-
-      // original modu
-      auto _nbhcs_i_ncell_pos = NbhCDir(
-          GetPartInLine<vector<Byte>, 6>(res.m_nbh_c, _nbhcs[i]), ncell);
-      auto [_unused_1, _unused_2, _unused_3, valence] =
-          GetAdjSurface_(_nbhcs[i], static_cast<Byte>(_nbhcs_i_ncell_pos),
-                         static_cast<Byte>(_nbhcs_i_next_pos));
-      int sheetid = res.m_cell_sheet[ncell * 6 + 5];
-      if (valence == 2) {
-        res.m_sheet[sheetid].first += 1;
-      } else if (valence == 4) {
-        res.m_sheet[sheetid].second += 1;
-      } else if (valence > 4 || valence < 2) {
-        return {false, res};
-      }
-    }
-  }
-
-  // check for unfit sheet
-  for (int i = 0; i < 6; i += 2) {
-    auto sheetnum = res.m_cell_sheet[ncell * 6 + i];
-    auto &sheet = res.m_sheet[sheetnum];
-    int tvd = sheet.first - sheet.second;
-    if (tvd > 4 || tvd < -1 || sheet.first > 5 || sheet.second > 1) {
-      return {false, res};
-    }
-  }
-
   res.Regular();
   res.m_size = res.m_nbh_c.size() / 6;
   return {true, res};
@@ -1006,7 +829,7 @@ bool HexModu::operator<(const HexModu &rhs) const {
 bool HexModu::operator==(const HexModu &rhs) const {
   return m_nbh_c == rhs.m_nbh_c && m_nbh_v == rhs.m_nbh_v;
 }
-
+/*
 int HexModu::getSingOffsetForSf() const {
   float res = 6 * pow(size(), 0.66666666666666667);
   for (auto x : m_sheet) {
@@ -1018,3 +841,4 @@ int HexModu::getSingOffsetForSf() const {
   res += 2.0000001;
   return std::round(res);
 }
+*/
